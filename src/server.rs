@@ -4,22 +4,24 @@ use actix_web::{
     web::{self},
     App, HttpResponse, HttpServer, Responder,
 };
-use kv::*;
+use redis::{Commands, JsonCommands};
 use time::OffsetDateTime;
 
 use crate::{Mutation, MutationStatus};
-fn store_mutation(bucket: Bucket<String, Json<Mutation>>, mutation: Mutation) {
+fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
     let key = mutation.id.clone();
+    let mut con = redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
 
-    let m = bucket.get(&key);
-    if m.is_ok() && m.unwrap().is_some() {
+    if con.exists(&key).unwrap() {
         println!("Mutation already exists: {}", mutation.id);
         return;
     }
 
-    bucket.set(&key, &Json(mutation.clone())).unwrap();
-    bucket.flush();
-
+    let _: () = con
+        .json_set(&key, "$", &mutation)
+        .expect("Failed to store mutation");
     println!("Stored mutation: {}", mutation.id);
 }
 #[get("/")]
@@ -27,32 +29,51 @@ async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 #[get("/mutations")]
-async fn list_mutations(bucket: web::Data<Bucket<'_, String, Json<Mutation>>>) -> impl Responder {
+async fn list_mutations(redis_client: web::Data<redis::Client>) -> impl Responder {
     let mut mutations = Vec::new();
-    for r in bucket.iter() {
-        let value = r.unwrap().value::<Json<Mutation>>().unwrap();
-        mutations.push(value.0);
+
+    let mut con = redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
+
+    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
+
+    for key in keys {
+        let mutation: String = con
+            .json_get(&key, "$")
+            .expect("Failed to get mutation from redis");
+
+        let mutation: Vec<Mutation> =
+            serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+        let mutation = mutation[0].clone();
+        mutations.push(mutation);
     }
 
     HttpResponse::Ok().json(mutations)
 }
 #[post("/get_work")]
-async fn get_work(bucket: web::Data<Bucket<'_, String, Json<Mutation>>>) -> impl Responder {
-    for r in bucket.iter() {
-        let value = r.unwrap().value::<Json<Mutation>>().unwrap();
-        if value.0.status == MutationStatus::Pending {
-            bucket
-                .set(
-                    &value.0.id,
-                    &Json(Mutation {
-                        status: MutationStatus::Running,
-                        start_time: Some(OffsetDateTime::now_utc()),
-                        ..value.0.clone()
-                    }),
-                )
-                .unwrap();
-            bucket.flush();
-            return HttpResponse::Ok().json(value.0);
+async fn get_work(redis_client: web::Data<redis::Client>) -> impl Responder {
+    let mut con = redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
+
+    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
+
+    for key in keys {
+        let mutation: String = con
+            .json_get(&key, "$")
+            .expect("Failed to get mutation from redis");
+
+        println!("Got mutation: {}", mutation);
+
+        let mut mutation: Vec<Mutation> =
+            serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+        let mut mutation = mutation.pop().unwrap();
+        if mutation.status == MutationStatus::Pending {
+            mutation.status = MutationStatus::Running;
+            mutation.start_time = Some(OffsetDateTime::now_utc());
+            store_mutation(&redis_client, mutation.clone());
+            return HttpResponse::Ok().json(mutation);
         }
     }
 
@@ -61,40 +82,36 @@ async fn get_work(bucket: web::Data<Bucket<'_, String, Json<Mutation>>>) -> impl
 
 #[post("/mutations/{id}")]
 async fn submit_mutation_result(
-    bucket: web::Data<Bucket<'_, String, Json<Mutation>>>,
+    redis_client: web::Data<redis::Client>,
     id: web::Path<String>,
     status: web::Json<MutationStatus>,
 ) -> impl Responder {
     let key = id.into_inner();
-    let m = bucket.get(&key);
-    if let Ok(Some(m)) = m {
-        println!("Mutation {}: {:?}", key, status.0);
-        let value = m.0;
-        bucket
-            .set(
-                &key,
-                &Json(Mutation {
-                    status: status.into_inner(),
-                    end_time: Some(OffsetDateTime::now_utc()),
-                    ..value.clone()
-                }),
-            )
-            .unwrap();
-        bucket.flush();
-        return HttpResponse::Ok().json(value);
-    }
+    let mut con = redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
+
+    let mutation: String = con
+        .json_get(&key, "$")
+        .expect("Failed to get mutation from redis");
+
+    let mut mutation: Vec<Mutation> =
+        serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+    let mut mutation = mutation.pop().unwrap();
+    mutation.status = status.into_inner();
+    mutation.end_time = Some(OffsetDateTime::now_utc());
+    store_mutation(&redis_client, mutation.clone());
 
     HttpResponse::NotFound().finish()
 }
 
 #[post("/mutations")]
 async fn add_mutations(
-    bucket: web::Data<Bucket<'_, String, Json<Mutation>>>,
+    redis_client: web::Data<redis::Client>,
     mutations: web::Json<Vec<Mutation>>,
 ) -> impl Responder {
-    let bucket = bucket.as_ref();
     for mutation in mutations.into_inner() {
-        store_mutation(bucket.clone(), mutation);
+        store_mutation(&redis_client, mutation);
     }
 
     HttpResponse::Ok().finish()
@@ -102,44 +119,8 @@ async fn add_mutations(
 
 pub async fn run(host: String, port: u16, db: String) {
     println!("Starting server on {}:{}", host, port);
-    let cfg = Config::new(db);
 
-    let store = Store::new(cfg);
-
-    if let Err(e) = store {
-        println!("Error: {}", e);
-        return;
-    }
-
-    let store = store.unwrap();
-    let mutations_store = store
-        .bucket::<String, Json<Mutation>>(Some("mutations"))
-        .unwrap();
-
-    // Run periodic
-    let store_clone = mutations_store.clone();
-    std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(5));
-        for r in store_clone.iter() {
-            let value = r.unwrap().value::<Json<Mutation>>().unwrap();
-            if value.0.status == MutationStatus::Running {
-                if let Some(start_time) = value.0.start_time {
-                    let now = OffsetDateTime::now_utc();
-                    if now - start_time > time::Duration::hours(2) {
-                        store_clone
-                            .set(
-                                &value.0.id,
-                                &Json(Mutation {
-                                    status: MutationStatus::Pending,
-                                    ..value.0.clone()
-                                }),
-                            )
-                            .unwrap();
-                    }
-                }
-            }
-        }
-    });
+    let redis_client = redis::Client::open("redis://127.0.0.1:6379/").expect("err");
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -149,7 +130,7 @@ pub async fn run(host: String, port: u16, db: String) {
             .max_age(3600);
         App::new()
             .wrap(cors)
-            .app_data(web::Data::new(mutations_store.clone()))
+            .app_data(web::Data::new(redis_client.clone()))
             .service(list_mutations)
             .service(get_work)
             .service(index)

@@ -27,18 +27,23 @@ enum Action {
     },
     #[clap(name = "server", about = "Start the server")]
     Server {
-        #[clap(long, help = "Host")]
+        #[clap(long, help = "Host", default_value = "0.0.0.0")]
         host: String,
-        #[clap(long, help = "Port")]
+        #[clap(long, help = "Port", default_value = "8080")]
         port: u16,
-        #[clap(long, help = "DB path")]
+        #[clap(long, help = "DB path", default_value = "db")]
         db: String,
     },
     #[clap(name = "run", about = "Run mutations")]
     Run {
         #[clap(short, long, help = "Server to get work from")]
         server: String,
-        #[clap(short, long, help = "Path to Bitcoin Core", default_value = "/tmp/bitcoin")]
+        #[clap(
+            short,
+            long,
+            help = "Path to Bitcoin Core",
+            default_value = "/tmp/bitcoin"
+        )]
         path: String,
         #[clap(short, long, help = "Build command", default_value = "make -j$(nproc)")]
         build_cmd: String,
