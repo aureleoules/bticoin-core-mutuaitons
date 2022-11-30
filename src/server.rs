@@ -104,7 +104,7 @@ async fn submit_mutation_result(
     let _ : () = con.json_set(&key, "$", &mutation)
         .expect("Failed to store mutation");
 
-    HttpResponse::NotFound().finish()
+    HttpResponse::Ok().finish()
 }
 
 #[post("/mutations")]
