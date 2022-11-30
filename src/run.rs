@@ -3,8 +3,8 @@ use std::{
     os::unix::process::ExitStatusExt,
     process::ExitStatus,
 };
-
 use time::OffsetDateTime;
+use wait_timeout::ChildExt;
 
 use crate::{Mutation, MutationResult, MutationStatus};
 
@@ -41,7 +41,10 @@ pub async fn execute_mutations(
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
-        let mut cmd_str = format!("git stash && git checkout {} && git pull origin {}", mutation.branch, mutation.branch);
+        let mut cmd_str = format!(
+            "git stash && git checkout {} && git pull origin {}",
+            mutation.branch, mutation.branch
+        );
 
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
@@ -51,60 +54,43 @@ pub async fn execute_mutations(
         cmd_str = format!("{} && {}", cmd_str, test_cmd);
         cmd.arg(cmd_str.clone());
 
-        println!("Executing: {}", cmd_str);
+        let mut child = cmd.spawn().unwrap();
 
-        let start_time = OffsetDateTime::now_utc();
-        // Timeout after 1h
-        let timeout_t = std::time::Duration::from_secs(60 * 90); // 90 minutes
+        // Stream stdout and stderr
+        let stdout = child.stdout.take().unwrap();
+        let stderr = child.stderr.take().unwrap();
+        let stdout = BufReader::new(stdout);
+        let stderr = BufReader::new(stderr);
 
-        // Get stderr and stdout
-
-        let mut child = cmd.spawn()?;
-
-        let mut timeout = false;
-        let mut status_code = ExitStatus::from_raw(-1);
-        loop {
-            println!("Waiting for child to exit...");
-            if start_time + timeout_t < OffsetDateTime::now_utc() {
-                println!("Timeout");
-                child.kill()?;
-                timeout = true;
-                break;
-            }
-
-            match child.try_wait()? {
-                Some(status) => {
-                    println!("Child exited with status: {}", status);
-                    status_code = status;
-                    break;
-                }
-                None => {
-                    std::thread::sleep(std::time::Duration::from_secs(60));
-                }
-            }
+        // Store stdout and stderr and print to console
+        let mut stdout_str = String::new();
+        let mut stderr_str = String::new();
+        for line in stdout.lines() {
+            let line = line.unwrap();
+            stdout_str = format!("{}\n{}", stdout_str, line);
+            println!("{}", line);
+        }
+        for line in stderr.lines() {
+            let line = line.unwrap();
+            stderr_str = format!("{}\n{}", stderr_str, line);
+            println!("{}", line);
         }
 
-        let stdout = BufReader::new(child.stdout.take().unwrap())
-            .lines()
-            .map(|l| l.unwrap())
-            .collect::<Vec<String>>()
-            .join("\n");
+        let status = match child
+            .wait_timeout(std::time::Duration::from_secs(60 * 60))
+            .unwrap()
+        {
+            Some(status) => status.code(),
+            None => {
+                child.kill().unwrap();
+                None
+            }
+        };
 
-        let stderr = BufReader::new(child.stderr.take().unwrap())
-            .lines()
-            .map(|l| l.unwrap())
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        println!("Stdout: {}", stdout);
-        println!("Stderr: {}", stderr);
-
-        let status = if timeout {
-            MutationStatus::Timeout
-        } else if status_code.success() {
-            MutationStatus::NotKilled
-        } else {
-            MutationStatus::Killed
+        let status = match status {
+            Some(0) => MutationStatus::NotKilled,
+            None => MutationStatus::Timeout,
+            _ => MutationStatus::Killed,
         };
 
         println!("Mutation {} status: {:?}", mutation.id, status);
@@ -115,8 +101,8 @@ pub async fn execute_mutations(
             .body(serde_json::to_string(&MutationResult {
                 mutation_id: mutation.id,
                 status,
-                stdout: Some(stdout),
-                stderr: Some(stderr),
+                stdout: Some(stdout_str),
+                stderr: Some(stderr_str),
             })?)
             .header("Content-Type", "application/json")
             .header("Authorization", token)
