@@ -72,7 +72,8 @@ async fn get_work(redis_client: web::Data<redis::Client>) -> impl Responder {
         if mutation.status == MutationStatus::Pending {
             mutation.status = MutationStatus::Running;
             mutation.start_time = Some(OffsetDateTime::now_utc());
-            store_mutation(&redis_client, mutation.clone());
+            let _ : () = con.json_set(&key, "$", &mutation)
+                .expect("Failed to store mutation");
             return HttpResponse::Ok().json(mutation);
         }
     }
@@ -100,7 +101,8 @@ async fn submit_mutation_result(
     let mut mutation = mutation.pop().unwrap();
     mutation.status = status.into_inner();
     mutation.end_time = Some(OffsetDateTime::now_utc());
-    store_mutation(&redis_client, mutation.clone());
+    let _ : () = con.json_set(&key, "$", &mutation)
+        .expect("Failed to store mutation");
 
     HttpResponse::NotFound().finish()
 }
@@ -117,10 +119,10 @@ async fn add_mutations(
     HttpResponse::Ok().finish()
 }
 
-pub async fn run(host: String, port: u16, db: String) {
+pub async fn run(host: String, port: u16, redis_ip: String) {
     println!("Starting server on {}:{}", host, port);
 
-    let redis_client = redis::Client::open("redis://127.0.0.1:6379/").expect("err");
+    let redis_client = redis::Client::open("redis://".to_string() + &redis_ip).expect("Failed to connect to redis");
 
     HttpServer::new(move || {
         let cors = Cors::default()

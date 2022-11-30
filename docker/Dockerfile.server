@@ -11,4 +11,4 @@ RUN rm ./target/release/deps/bcm*
 RUN cargo build --release
 RUN cp ./target/release/bcm /usr/local/bin
 
-ENTRYPOINT ["bcm", "server", "--host", "0.0.0.0", "--port", "8080", "--db", "/data"]
+ENTRYPOINT ["bcm", "server", "--host", "0.0.0.0", "--port", "8080" ]

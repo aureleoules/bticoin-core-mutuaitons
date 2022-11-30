@@ -31,8 +31,8 @@ enum Action {
         host: String,
         #[clap(long, help = "Port", default_value = "8080")]
         port: u16,
-        #[clap(long, help = "DB path", default_value = "db")]
-        db: String,
+        #[clap(long, help = "Redis database", default_value = "127.0.0.1")]
+        redis: String,
     },
     #[clap(name = "run", about = "Run mutations")]
     Run {
@@ -105,8 +105,8 @@ async fn main() {
                 .await
                 .unwrap();
         }
-        Some(Action::Server { host, port, db }) => {
-            server::run(host.clone(), *port, db.clone()).await;
+        Some(Action::Server { host, port, redis }) => {
+            server::run(host.clone(), *port, redis.clone()).await;
         }
         Some(Action::Run {
             server,
