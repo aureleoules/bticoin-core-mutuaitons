@@ -111,6 +111,7 @@ pub fn create_mutations(files: &Vec<String>) -> Vec<Mutation> {
 pub async fn send_mutations(
     server: String,
     mutations: Vec<Mutation>,
+    token: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::new();
 
@@ -119,6 +120,7 @@ pub async fn send_mutations(
         .post(&format!("{}/mutations", server))
         .body(body)
         .header("Content-Type", "application/json")
+        .header("Authorization", token)
         .send()
         .await?;
 

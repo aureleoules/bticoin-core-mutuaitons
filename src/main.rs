@@ -24,6 +24,8 @@ enum Action {
         files: Vec<String>,
         #[clap(short, long, help = "Server to send mutations")]
         server: String,
+        #[clap(short, long, help = "Token to use for authentication")]
+        token: String,
     },
     #[clap(name = "server", about = "Start the server")]
     Server {
@@ -33,6 +35,8 @@ enum Action {
         port: u16,
         #[clap(long, help = "Redis database", default_value = "127.0.0.1")]
         redis: String,
+        #[clap(long = "token", help = "Authorized tokens (owner:token)")]
+        tokens: Vec<String>,
     },
     #[clap(name = "run", about = "Run mutations")]
     Run {
@@ -54,6 +58,8 @@ enum Action {
             default_value = "make check -j$(expr $(nproc) + 4) && test/functional/test_runner.py -j$(expr $(nproc) + 4) -F"
         )]
         test_cmd: String,
+        #[clap(short, long, help = "Token to use for authentication")]
+        token: String,
     },
 }
 
@@ -94,27 +100,37 @@ async fn main() {
     .expect("Error setting Ctrl-C handler");
 
     match &args.action {
-        Some(Action::Mutate { server, files }) => {
+        Some(Action::Mutate {
+            server,
+            files,
+            token,
+        }) => {
             if files.is_empty() {
                 println!("No files to mutate, please specify some files with --files.");
                 return;
             }
 
             let mutations = mutators::create_mutations(files);
-            mutators::send_mutations(server.to_string(), mutations)
+            mutators::send_mutations(server.to_string(), mutations, token)
                 .await
                 .unwrap();
         }
-        Some(Action::Server { host, port, redis }) => {
-            server::run(host.clone(), *port, redis.clone()).await;
+        Some(Action::Server {
+            host,
+            port,
+            redis,
+            tokens,
+        }) => {
+            server::run(host.clone(), *port, redis.clone(), tokens.clone()).await;
         }
         Some(Action::Run {
             server,
             path,
             build_cmd,
             test_cmd,
+            token,
         }) => {
-            run::execute_mutations(server, path, build_cmd, test_cmd).await;
+            run::execute_mutations(server, path, build_cmd, test_cmd, token).await;
         }
         None => {
             let mut cmd = Args::command();

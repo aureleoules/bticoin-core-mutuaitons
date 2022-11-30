@@ -9,13 +9,18 @@ pub async fn execute_mutations(
     path: &str,
     build_cmd: &str,
     test_cmd: &str,
+    token: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running mutations...");
 
     loop {
         println!("Getting work...");
         let client = reqwest::Client::new();
-        let res = client.post(&format!("{}/get_work", server)).send().await?;
+        let res = client
+            .post(&format!("{}/get_work", server))
+            .header("Authorization", token)
+            .send()
+            .await?;
         println!("Got work: {:?}", res);
         if res.status() == 204 {
             println!("No work available");
@@ -85,6 +90,7 @@ pub async fn execute_mutations(
             .post(&format!("{}/mutations/{}", server, mutation.id))
             .body(serde_json::to_string(&status)?)
             .header("Content-Type", "application/json")
+            .header("Authorization", token)
             .send()
             .await;
 
