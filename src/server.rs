@@ -45,7 +45,7 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
             .expect("Failed to get mutation from redis");
 
         let mutation: Vec<Mutation> =
-            serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+            serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
         let mutation = mutation[0].clone();
         mutations.push(mutation);
     }
@@ -67,7 +67,7 @@ async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Respond
         .expect("Failed to get mutation from redis");
 
     let mutation: Vec<Mutation> =
-        serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+        serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
     let mutation = mutation[0].clone();
 
     HttpResponse::Ok().json(mutation)
@@ -102,7 +102,7 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
         println!("Got mutation: {}", mutation);
 
         let mut mutation: Vec<Mutation> =
-            serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+            serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
         let mut mutation = mutation.pop().unwrap();
         if mutation.status == MutationStatus::Pending {
             mutation.status = MutationStatus::Running;
@@ -147,7 +147,7 @@ async fn submit_mutation_result(
         .expect("Failed to get mutation from redis");
 
     let mut mutation: Vec<Mutation> =
-        serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+        serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
     let mut mutation = mutation.pop().unwrap();
     mutation.status = result.status.clone();
     mutation.stdout = result.stdout.clone();
@@ -204,7 +204,7 @@ fn is_authorized(token: String, tokens: Vec<Token>) -> bool {
             return true;
         }
     }
-    return false;
+    false
 }
 
 pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>) {
@@ -213,7 +213,7 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>)
     // Parse tokens : Owner:Token
     let mut parsed_tokens = Vec::new();
     for token in tokens {
-        let parts: Vec<&str> = token.split(":").collect();
+        let parts: Vec<&str> = token.split(':').collect();
         if parts.len() != 2 {
             panic!("Invalid token: {}", token);
         }
