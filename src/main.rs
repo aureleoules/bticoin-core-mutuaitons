@@ -95,8 +95,8 @@ pub struct Mutation {
 pub struct MutationResult {
     mutation_id: String,
     status: MutationStatus,
-    stdout: String,
-    stderr: String,
+    stdout: Option<String>,
+    stderr: Option<String>,
 }
 
 #[actix_web::main]

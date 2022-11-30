@@ -150,8 +150,8 @@ async fn submit_mutation_result(
         serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
     let mut mutation = mutation.pop().unwrap();
     mutation.status = result.status.clone();
-    mutation.stdout = Some(result.stdout.clone());
-    mutation.stderr = Some(result.stderr.clone());
+    mutation.stdout = result.stdout.clone();
+    mutation.stderr = result.stderr.clone();
     mutation.end_time = Some(OffsetDateTime::now_utc());
     let _: () = con
         .json_set("mut".to_string() + &key, "$", &mutation)

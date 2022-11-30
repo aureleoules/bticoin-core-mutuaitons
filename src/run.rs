@@ -111,8 +111,8 @@ pub async fn execute_mutations(
             .body(serde_json::to_string(&MutationResult {
                 mutation_id: mutation.id,
                 status,
-                stdout,
-                stderr,
+                stdout: Some(stdout),
+                stderr: Some(stderr),
             })?)
             .header("Content-Type", "application/json")
             .header("Authorization", token)
