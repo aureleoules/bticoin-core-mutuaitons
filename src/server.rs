@@ -52,6 +52,28 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
 
     HttpResponse::Ok().json(mutations)
 }
+
+#[get("/mutations/{id}")]
+async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Responder {
+    let id = req.match_info().get("id").unwrap_or("0");
+    let key = "mut".to_string() + id;
+
+    let mut con = ctx
+        .redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
+
+    let mutation: String = con
+        .json_get(&key, "$")
+        .expect("Failed to get mutation from redis");
+
+    let mutation: Vec<Mutation> =
+        serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
+    let mutation = mutation[0].clone();
+
+    HttpResponse::Ok().json(mutation)
+}
+
 #[post("/get_work")]
 async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
     // Get Authorization header
@@ -220,6 +242,7 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>)
             .service(index)
             .service(add_mutations)
             .service(submit_mutation_result)
+            .service(get_mutation)
     })
     .bind(format!("{}:{}", host, port))
     .unwrap()
