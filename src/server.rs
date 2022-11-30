@@ -14,13 +14,13 @@ fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
         .get_connection()
         .expect("Failed to get redis connection");
 
-    if con.exists("mut".to_string() + &key).unwrap() {
+    if con.exists(&key).unwrap() {
         println!("Mutation already exists: {}", mutation.id);
         return;
     }
 
     let _: () = con
-        .json_set("mut".to_string() + &key, "$", &mutation)
+        .json_set(&key, "$", &mutation)
         .expect("Failed to store mutation");
     println!("Stored mutation: {}", mutation.id);
 }
@@ -37,7 +37,7 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
         .get_connection()
         .expect("Failed to get redis connection");
 
-    let keys: Vec<String> = con.keys("mut*").expect("Failed to get keys");
+    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
 
     for key in keys {
         let mutation: String = con
@@ -56,7 +56,6 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
 #[get("/mutations/{id}")]
 async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Responder {
     let id = req.match_info().get("id").unwrap_or("0");
-    let key = "mut".to_string() + id;
 
     let mut con = ctx
         .redis_client
@@ -64,7 +63,7 @@ async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Respond
         .expect("Failed to get redis connection");
 
     let mutation: String = con
-        .json_get(&key, "$")
+        .json_get(&id, "$")
         .expect("Failed to get mutation from redis");
 
     let mutation: Vec<Mutation> =
@@ -93,7 +92,7 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
         .get_connection()
         .expect("Failed to get redis connection");
 
-    let keys: Vec<String> = con.keys("mut*").expect("Failed to get keys");
+    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
 
     for key in keys {
         let mutation: String = con
@@ -109,7 +108,7 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
             mutation.status = MutationStatus::Running;
             mutation.start_time = Some(OffsetDateTime::now_utc());
             let _: () = con
-                .json_set("mut".to_string() + &key, "$", &mutation)
+                .json_set(&key, "$", &mutation)
                 .expect("Failed to store mutation");
             return HttpResponse::Ok().json(mutation);
         }
@@ -137,13 +136,14 @@ async fn submit_mutation_result(
     }
 
     let key = id.into_inner();
+    println!("Got key: {}", key);
     let mut con = ctx
         .redis_client
         .get_connection()
         .expect("Failed to get redis connection");
 
     let mutation: String = con
-        .json_get("mut".to_string() + &key, "$")
+        .json_get(&key, "$")
         .expect("Failed to get mutation from redis");
 
     let mut mutation: Vec<Mutation> =
@@ -153,8 +153,11 @@ async fn submit_mutation_result(
     mutation.stdout = result.stdout.clone();
     mutation.stderr = result.stderr.clone();
     mutation.end_time = Some(OffsetDateTime::now_utc());
+
+    println!("Got mutation result: {:?}", mutation.status);
+
     let _: () = con
-        .json_set("mut".to_string() + &key, "$", &mutation)
+        .json_set(&key, "$", &mutation)
         .expect("Failed to store mutation");
 
     HttpResponse::Ok().finish()
