@@ -1,6 +1,8 @@
 #  Bticoin Core Mutuaitons
 
-This repository contains a CLI to perform mutation testing on the Bitcoin Core codebase.
+This repository contains a CLI to perform mutation testing on the Bitcoin Core codebase and orchestrate the execution of the workers.
+
+Testing Bitcoin Core's source code with mutations was first proposed by [brunoerg](https://github.com/brunoerg) [here](https://github.com/bitcoin/bitcoin/pull/24499) and [here](https://github.com/brunoerg/bitcoin-core-mutation).
 
 ### Server
 
