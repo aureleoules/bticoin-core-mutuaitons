@@ -7,7 +7,7 @@ use actix_web::{
 use redis::{Commands, JsonCommands};
 use time::OffsetDateTime;
 
-use crate::{Mutation, MutationStatus};
+use crate::{Mutation, MutationResult, MutationStatus};
 fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
     let key = mutation.id.clone();
     let mut con = redis_client
@@ -101,7 +101,7 @@ async fn submit_mutation_result(
     request: HttpRequest,
     ctx: web::Data<Context>,
     id: web::Path<String>,
-    status: web::Json<MutationStatus>,
+    result: web::Json<MutationResult>,
 ) -> impl Responder {
     let auth_header = request.headers().get("Authorization");
     if auth_header.is_none() {
@@ -127,7 +127,9 @@ async fn submit_mutation_result(
     let mut mutation: Vec<Mutation> =
         serde_json::from_slice(&mutation.as_bytes()).expect("Failed to deserialize mutation");
     let mut mutation = mutation.pop().unwrap();
-    mutation.status = status.into_inner();
+    mutation.status = result.status.clone();
+    mutation.stdout = Some(result.stdout.clone());
+    mutation.stderr = Some(result.stderr.clone());
     mutation.end_time = Some(OffsetDateTime::now_utc());
     let _: () = con
         .json_set(&key, "$", &mutation)

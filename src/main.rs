@@ -24,7 +24,7 @@ enum Action {
         files: Vec<String>,
         #[clap(short, long, help = "Server to send mutations")]
         server: String,
-        #[clap(short, long, help = "Token to use for authentication")]
+        #[clap(long, help = "Token to use for authentication")]
         token: String,
     },
     #[clap(name = "server", about = "Start the server")]
@@ -58,7 +58,7 @@ enum Action {
             default_value = "make check -j$(expr $(nproc) + 4) && test/functional/test_runner.py -j$(expr $(nproc) + 4) -F"
         )]
         test_cmd: String,
-        #[clap(short, long, help = "Token to use for authentication")]
+        #[clap(long, help = "Token to use for authentication")]
         token: String,
     },
 }
@@ -87,6 +87,16 @@ pub struct Mutation {
     start_time: Option<OffsetDateTime>,
     #[serde(default, with = "time::serde::timestamp::option")]
     end_time: Option<OffsetDateTime>,
+    stderr: Option<String>,
+    stdout: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MutationResult {
+    mutation_id: String,
+    status: MutationStatus,
+    stdout: String,
+    stderr: String,
 }
 
 #[actix_web::main]

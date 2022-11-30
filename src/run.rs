@@ -1,8 +1,12 @@
-use std::{os::unix::process::ExitStatusExt, process::ExitStatus};
+use std::{
+    io::{BufRead, BufReader},
+    os::unix::process::ExitStatusExt,
+    process::ExitStatus,
+};
 
 use time::OffsetDateTime;
 
-use crate::{Mutation, MutationStatus};
+use crate::{Mutation, MutationResult, MutationStatus};
 
 pub async fn execute_mutations(
     server: &str,
@@ -34,6 +38,8 @@ pub async fn execute_mutations(
         let mut cmd = std::process::Command::new("bash");
         cmd.current_dir(path);
         cmd.arg("-c");
+        cmd.stdout(std::process::Stdio::piped());
+        cmd.stderr(std::process::Stdio::piped());
 
         let mut cmd_str = format!("git stash && git checkout {}", mutation.branch);
 
@@ -50,6 +56,8 @@ pub async fn execute_mutations(
         let start_time = OffsetDateTime::now_utc();
         // Timeout after 1h
         let timeout_t = std::time::Duration::from_secs(60 * 90); // 90 minutes
+
+        // Get stderr and stdout
 
         let mut child = cmd.spawn()?;
 
@@ -75,6 +83,18 @@ pub async fn execute_mutations(
             }
         }
 
+        let stdout = BufReader::new(child.stdout.take().unwrap())
+            .lines()
+            .map(|l| l.unwrap())
+            .collect::<Vec<String>>()
+            .join("\n");
+
+        let stderr = BufReader::new(child.stderr.take().unwrap())
+            .lines()
+            .map(|l| l.unwrap())
+            .collect::<Vec<String>>()
+            .join("\n");
+
         let status = if timeout {
             MutationStatus::Timeout
         } else if status_code.success() {
@@ -88,7 +108,12 @@ pub async fn execute_mutations(
         let client = reqwest::Client::new();
         let res = client
             .post(&format!("{}/mutations/{}", server, mutation.id))
-            .body(serde_json::to_string(&status)?)
+            .body(serde_json::to_string(&MutationResult {
+                mutation_id: mutation.id,
+                status,
+                stdout,
+                stderr,
+            })?)
             .header("Content-Type", "application/json")
             .header("Authorization", token)
             .send()

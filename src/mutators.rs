@@ -100,6 +100,8 @@ pub fn create_mutations(files: &Vec<String>) -> Vec<Mutation> {
                 status: MutationStatus::Pending,
                 start_time: None,
                 end_time: None,
+                stderr: None,
+                stdout: None,
             };
 
             mutations.push(m);
