@@ -1,0 +1,18 @@
+FROM rust:1.65.0
+
+RUN git clone https://github.com/bitcoin/bitcoin.git /tmp/bitcoin
+
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+RUN mkdir src && echo "fn main() {}" > src/main.rs
+RUN cargo build --release
+RUN rm src/*.rs
+
+COPY . .
+RUN rm ./target/release/deps/bcm*
+RUN cargo build --release
+RUN cp ./target/release/bcm /usr/local/bin
+
+WORKDIR /tmp/bitcoin
+
+ENTRYPOINT ["bcm", "mutate"]

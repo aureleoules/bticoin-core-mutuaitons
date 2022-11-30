@@ -6,7 +6,7 @@ This repository contains a CLI to perform mutation testing on the Bitcoin Core c
 
 The server host mutations and assigns work to different workers.
 
-```docker-compose
+```bash
 version: "3.1"
 services:
   bcm_server:
@@ -31,6 +31,11 @@ networks:
   bcm:
 ```
 
+### Add mutations
+
+```bash
+docker run -it --rm aureleoules/bcm-mutator --server https://YOUR_SERVER.com -f src/wallet/spend.cpp -f src/validation.cpp
+```
 
 ### Worker
 
@@ -38,7 +43,7 @@ The worker performs the mutations and reports the results to the server.
 It patches the corresponding file and runs the unit tests and the functional tests.
 If the CI fails, the mutation is considered as killed. Otherwise, it is considered as survived.
 
-```docker
+```bash
 version: "3.1"
 services:
   bcm_worker:
