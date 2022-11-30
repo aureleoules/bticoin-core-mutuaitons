@@ -17,7 +17,7 @@ services:
     networks:
       - bcm
     restart: always
-    command: --redis redis
+    command: --redis redis --token aureleoules:token --token user2:token
     
   redis:
     image: redislabs/rejson
@@ -36,7 +36,7 @@ networks:
 ### Add mutations
 
 ```bash
-docker run -it --rm aureleoules/bcm-mutator --server https://YOUR_SERVER.com -f src/wallet/spend.cpp -f src/validation.cpp
+docker run -it --rm aureleoules/bcm-mutator --token yourtoken --server https://YOUR_SERVER.com -f src/wallet/spend.cpp -f src/validation.cpp
 ```
 
 ### Worker
@@ -53,5 +53,5 @@ services:
     container_name: bcm-worker
     restart: always
     command:
-      "--server https://YOUR_SERVER.com"
+      "--server https://YOUR_SERVER.com --token yourtoken"
 ```
