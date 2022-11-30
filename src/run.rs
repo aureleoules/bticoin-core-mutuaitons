@@ -64,6 +64,7 @@ pub async fn execute_mutations(
         let mut timeout = false;
         let mut status_code = ExitStatus::from_raw(-1);
         loop {
+            println!("Waiting for child to exit...");
             if start_time + timeout_t < OffsetDateTime::now_utc() {
                 println!("Timeout");
                 child.kill()?;
@@ -78,7 +79,7 @@ pub async fn execute_mutations(
                     break;
                 }
                 None => {
-                    std::thread::sleep(std::time::Duration::from_secs(5));
+                    std::thread::sleep(std::time::Duration::from_secs(60));
                 }
             }
         }
@@ -94,6 +95,9 @@ pub async fn execute_mutations(
             .map(|l| l.unwrap())
             .collect::<Vec<String>>()
             .join("\n");
+
+        println!("Stdout: {}", stdout);
+        println!("Stderr: {}", stderr);
 
         let status = if timeout {
             MutationStatus::Timeout
