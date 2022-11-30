@@ -41,7 +41,7 @@ pub async fn execute_mutations(
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
-        let mut cmd_str = format!("git stash && git checkout {}", mutation.branch);
+        let mut cmd_str = format!("git stash && git checkout {} && git pull origin {}", mutation.branch, mutation.branch);
 
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
