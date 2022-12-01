@@ -25,7 +25,7 @@ pub async fn execute_mutations(
             .await?;
         if res.status() == 204 {
             println!("No work available");
-            std::thread::sleep(std::time::Duration::from_secs(60));
+            std::thread::sleep(std::time::Duration::from_secs(120));
             continue;
         }
 

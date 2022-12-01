@@ -105,13 +105,13 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
         let mut mutation: Vec<Mutation> =
             serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
         let mut mutation = mutation.pop().unwrap();
-        println!("Mutation sent to worker {}: {}", owner.as_ref().unwrap(), mutation.id);
         if mutation.status == MutationStatus::Pending {
             mutation.status = MutationStatus::Running;
             mutation.start_time = Some(OffsetDateTime::now_utc());
             let _: () = con
                 .json_set(&key, "$", &mutation)
                 .expect("Failed to store mutation");
+            println!("Mutation sent to worker {}: {}", owner.as_ref().unwrap(), mutation.id);
             return HttpResponse::Ok().json(mutation);
         }
     }
