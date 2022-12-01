@@ -46,7 +46,9 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
 
         let mutation: Vec<Mutation> =
             serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
-        let mutation = mutation[0].clone();
+        let mut mutation = mutation[0].clone();
+        mutation.stdout = None;
+        mutation.stderr = None;
         mutations.push(mutation);
     }
 
@@ -236,6 +238,8 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>)
             .max_age(3600);
         App::new()
             .wrap(cors)
+            .app_data(web::JsonConfig::default().limit(1024 * 1024 * 50))
+            .app_data(web::PayloadConfig::new(1 << 25))
             .app_data(web::Data::new(Context {
                 redis_client: redis_client.clone(),
                 tokens: parsed_tokens.clone(),
