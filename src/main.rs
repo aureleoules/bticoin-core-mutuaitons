@@ -55,7 +55,7 @@ enum Action {
             short,
             long,
             help = "Test command",
-            default_value = "make check -j$(expr $(nproc) + 4) && test/functional/test_runner.py -j$(expr $(nproc) + 4) -F"
+            default_value = "make check -j$(expr $(nproc) + 4) && python3 -u test/functional/test_runner.py -j$(expr $(nproc) + 4) -F"
         )]
         test_cmd: String,
         #[clap(long, help = "Token to use for authentication")]
