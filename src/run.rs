@@ -23,7 +23,6 @@ pub async fn execute_mutations(
             .header("Authorization", token)
             .send()
             .await?;
-        println!("Got work: {:?}", res);
         if res.status() == 204 {
             println!("No work available");
             std::thread::sleep(std::time::Duration::from_secs(60));
@@ -31,6 +30,7 @@ pub async fn execute_mutations(
         }
 
         let mutation = serde_json::from_str::<Mutation>(&res.text().await?)?;
+        println!("Got work: {}", mutation.id);
 
         // Execute shell commands
         let mut cmd = std::process::Command::new("bash");
@@ -66,12 +66,12 @@ pub async fn execute_mutations(
         for line in stdout.lines() {
             let line = line.unwrap();
             stdout_str = format!("{}\n{}", stdout_str, line);
-            println!("{}", line);
+            println!("stdout: {}", line);
         }
         for line in stderr.lines() {
             let line = line.unwrap();
             stderr_str = format!("{}\n{}", stderr_str, line);
-            println!("{}", line);
+            println!("stderr: {}", line);
         }
 
         let status = match child

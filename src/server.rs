@@ -83,7 +83,8 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
 
     // Get the token from the Authorization header
     let auth_header = auth_header.unwrap().to_str().unwrap();
-    if !is_authorized(auth_header.to_string(), ctx.tokens.clone()) {
+    let owner = is_authorized(auth_header.to_string(), ctx.tokens.clone());
+    if owner.is_none() {
         return HttpResponse::Unauthorized().body("Invalid token");
     }
 
@@ -99,11 +100,10 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
             .json_get(&key, "$")
             .expect("Failed to get mutation from redis");
 
-        println!("Got mutation: {}", mutation);
-
         let mut mutation: Vec<Mutation> =
             serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
         let mut mutation = mutation.pop().unwrap();
+        println!("Mutation sent to worker {}: {}", owner.as_ref().unwrap(), mutation.id);
         if mutation.status == MutationStatus::Pending {
             mutation.status = MutationStatus::Running;
             mutation.start_time = Some(OffsetDateTime::now_utc());
@@ -131,12 +131,13 @@ async fn submit_mutation_result(
 
     // Get the token from the Authorization header
     let auth_header = auth_header.unwrap().to_str().unwrap();
-    if !is_authorized(auth_header.to_string(), ctx.tokens.clone()) {
+    let owner = is_authorized(auth_header.to_string(), ctx.tokens.clone());
+    if owner.is_none() {
         return HttpResponse::Unauthorized().body("Invalid token");
     }
 
     let key = id.into_inner();
-    println!("Got key: {}", key);
+    println!("Received result for mutation {} from {}: {:?}", key, owner.unwrap(), result.status);
     let mut con = ctx
         .redis_client
         .get_connection()
@@ -153,8 +154,6 @@ async fn submit_mutation_result(
     mutation.stdout = result.stdout.clone();
     mutation.stderr = result.stderr.clone();
     mutation.end_time = Some(OffsetDateTime::now_utc());
-
-    println!("Got mutation result: {:?}", mutation.status);
 
     let _: () = con
         .json_set(&key, "$", &mutation)
@@ -176,7 +175,7 @@ async fn add_mutations(
 
     // Get the token from the Authorization header
     let auth_header = auth_header.unwrap().to_str().unwrap();
-    if !is_authorized(auth_header.to_string(), ctx.tokens.clone()) {
+    if is_authorized(auth_header.to_string(), ctx.tokens.clone()).is_none() {
         return HttpResponse::Unauthorized().body("Invalid token");
     }
 
@@ -198,13 +197,14 @@ struct Context {
     tokens: Vec<Token>,
 }
 
-fn is_authorized(token: String, tokens: Vec<Token>) -> bool {
+fn is_authorized(token: String, tokens: Vec<Token>) -> Option<String> {
     for t in tokens {
         if t.Token == token {
-            return true;
+            return Some(t.Owner);
         }
     }
-    false
+
+    None
 }
 
 pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>) {
