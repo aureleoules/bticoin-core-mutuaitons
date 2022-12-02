@@ -51,7 +51,27 @@ fn get_mutators() -> Vec<(Regex, String)> {
     .collect()
 }
 
-pub fn create_mutations(files: &Vec<String>) -> Vec<Mutation> {
+pub fn create_mutations(lines: &Vec<&str>, muts: &mut Vec<(usize, String)>) {
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("//")
+            || trimmed.starts_with('*')
+            || trimmed.starts_with("assert")
+        {
+            continue;
+        }
+
+        for (regex, replacement) in MUTATORS.iter() {
+            // Check if match
+            if regex.is_match(line).unwrap() {
+                let new_line = regex.replace(line, replacement).to_string();
+                muts.push((i, new_line));
+            }
+        }
+    }
+}
+
+pub fn create_mutations_from_files(files: &Vec<String>) -> Vec<Mutation> {
     let mut mutations = Vec::new();
     for file in files {
         println!("File: {}", file);
@@ -60,24 +80,7 @@ pub fn create_mutations(files: &Vec<String>) -> Vec<Mutation> {
         let lines = content.split('\n').collect::<Vec<&str>>();
         let mut muts: Vec<(usize, String)> = vec![]; // (line, mutation)
 
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim_start();
-            if trimmed.starts_with("//")
-                || trimmed.starts_with('*')
-                || trimmed.starts_with("assert")
-            {
-                continue;
-            }
-
-            for (regex, replacement) in MUTATORS.iter() {
-                // Check if match
-                if regex.is_match(line).unwrap() {
-                    let new_line = regex.replace(line, replacement).to_string();
-
-                    muts.push((i, new_line));
-                }
-            }
-        }
+        create_mutations(&lines, &mut muts);
 
         println!("{} mutations found", muts.len());
 
@@ -127,6 +130,36 @@ pub async fn send_mutations(
         .await?;
 
     println!("Sent mutation: {}", res.status());
-
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::create_mutations;
+    use std::collections::HashMap;
+    use std::fs;
+
+    #[test]
+    fn test_mutators() {
+        let file = fs::read_to_string("mocks/mutators.json").expect("Unable to read file");
+        let data: HashMap<String, Vec<String>> = serde_json::from_str(&file).unwrap();
+
+        for (to_be_mutated, expected_results) in data {
+            let mut mutations: Vec<(usize, String)> = vec![];
+            let lines: Vec<&str> = vec![&to_be_mutated];
+            let mut success = true;
+            create_mutations(&lines, &mut mutations);
+            assert_eq!(mutations.len(), expected_results.len());
+
+            for expected_result in expected_results {
+                let mut find_result = false;
+                for mutation in &mutations {
+                    if mutation.1 == expected_result {
+                        find_result = true;
+                    }
+                }
+                assert_eq!(find_result, true);
+            }
+        }
+    }
 }
