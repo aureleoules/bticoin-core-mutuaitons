@@ -39,6 +39,8 @@ networks:
 docker run -it --rm aureleoules/bcm-mutator --token yourtoken --server https://YOUR_SERVER.com -f src/wallet/spend.cpp -f src/validation.cpp
 ```
 
+If you are not using Docker your working directory must be Bitcoin Core. Otherwise, it will not able to find the files.
+
 ### Worker
 
 The worker performs the mutations and reports the results to the server.
