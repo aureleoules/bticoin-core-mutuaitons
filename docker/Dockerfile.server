@@ -11,4 +11,7 @@ RUN rm ./target/release/deps/bcm*
 RUN cargo build --release
 RUN cp ./target/release/bcm /usr/local/bin
 
+RUN git config --global user.email "ci@aureleoules.com"
+RUN git config --global user.name "CI"
+
 ENTRYPOINT ["bcm", "server", "--host", "0.0.0.0", "--port", "8080" ]

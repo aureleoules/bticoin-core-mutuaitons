@@ -22,4 +22,3 @@ ctrlc = "3.2"
 actix-cors = "0.6"
 time = { version = "0.3", features = ["serde"] }
 redis = { version = "0.22", features = ["json"] }
-wait-timeout = "0.2"

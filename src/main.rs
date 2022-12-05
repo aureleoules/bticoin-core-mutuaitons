@@ -1,6 +1,5 @@
 use clap::{CommandFactory, Parser, Subcommand};
 mod mutators;
-mod run;
 mod server;
 
 use serde::{Deserialize, Serialize};
@@ -37,29 +36,9 @@ enum Action {
         redis: String,
         #[clap(long = "token", help = "Authorized tokens (owner:token)")]
         tokens: Vec<String>,
-    },
-    #[clap(name = "run", about = "Run mutations")]
-    Run {
-        #[clap(short, long, help = "Server to get work from")]
-        server: String,
-        #[clap(
-            short,
-            long,
-            help = "Path to Bitcoin Core",
-            default_value = "/tmp/bitcoin"
-        )]
-        path: String,
-        #[clap(short, long, help = "Build command", default_value = "make -j$(nproc)")]
-        build_cmd: String,
-        #[clap(
-            short,
-            long,
-            help = "Test command",
-            default_value = "make check -j$(expr $(nproc) + 4) && python3 -u test/functional/test_runner.py -j$(expr $(nproc) + 4) -F"
-        )]
-        test_cmd: String,
-        #[clap(long, help = "Token to use for authentication")]
-        token: String,
+
+        #[clap(long = "mutation_repo", help = "Bitcoin Core mutation fork path")]
+        mutation_repo: String,    
     },
 }
 
@@ -130,17 +109,9 @@ async fn main() {
             port,
             redis,
             tokens,
+            mutation_repo
         }) => {
-            server::run(host.clone(), *port, redis.clone(), tokens.clone()).await;
-        }
-        Some(Action::Run {
-            server,
-            path,
-            build_cmd,
-            test_cmd,
-            token,
-        }) => {
-            run::execute_mutations(server, path, build_cmd, test_cmd, token).await;
+            server::run(host.clone(), *port, redis.clone(), tokens.clone(), mutation_repo.clone()).await;
         }
         None => {
             let mut cmd = Args::command();
