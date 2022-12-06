@@ -99,7 +99,7 @@ async fn main() {
                 return;
             }
 
-            let mutations = mutators::create_mutations(files);
+            let mutations = mutators::create_mutations_from_files(files);
             mutators::send_mutations(server.to_string(), mutations, token)
                 .await
                 .unwrap();

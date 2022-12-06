@@ -1,0 +1,6 @@
+{
+    " break; ": [" continue; "],
+    " return std::all_of(m_addr.begin(), m_addr.end(), [](uint8_t b) { return b == 0; }); ": [" return std::any_of(m_addr.begin(), m_addr.end(), [](uint8_t b) { return b == 0; }); ",
+    " return std::all_of(m_addr.begin(), m_addr.end(), [](uint8_t b) { return b != 0; }); "],
+    " if (it2 != mapInfo.end()) ": [" if (it2 == mapInfo.end()) "]
+}
