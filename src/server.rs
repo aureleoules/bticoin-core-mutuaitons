@@ -5,39 +5,17 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use redis::{Commands, JsonCommands};
-use serde::{Serialize, Deserialize};
 use time::OffsetDateTime;
 
 use crate::{Mutation, MutationResult, MutationStatus};
-fn store_mutation(ctx: &Context, mutation: Mutation) {
+fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
     let key = mutation.id.clone();
-    let mut con = ctx.redis_client
+    let mut con = redis_client
         .get_connection()
         .expect("Failed to get redis connection");
 
     if con.exists(&key).unwrap() {
         println!("Mutation already exists: {}", mutation.id);
-        return;
-    }
-
-    // Run bash script
-    let mut cmd = std::process::Command::new("bash");
-    // checkout master, create branch, commit, push
-    let patch_path = format!("/tmp/{}.patch", mutation.id);
-    std::fs::write(&patch_path, mutation.patch.clone()).expect("Failed to write patch file");
-
-    cmd.arg("-c")
-        .arg(format!(
-            "cd {} && git checkout master && git checkout -b mutation-{} && patch {} {} && git add . && git commit -m \"{}\" && git push -f origin mutation-{}",
-            ctx.mutation_repo, mutation.id, mutation.file, patch_path, mutation.id, mutation.id
-        ));
-
-    let output = cmd.output().expect("Failed to execute command");
-    println!("Output: {}", String::from_utf8_lossy(&output.stdout));
-
-    let status = output.status;
-    if !status.success() {
-        println!("Failed to run command: {}", status);
         return;
     }
 
@@ -50,19 +28,9 @@ fn store_mutation(ctx: &Context, mutation: Mutation) {
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct Params {
-    status: Option<MutationStatus>
-}
-
 #[get("/mutations")]
-async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
+async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
     let mut mutations = Vec::new();
-
-    let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
-
-    let status_filter = params.status.as_ref();
 
     let mut con = ctx
         .redis_client
@@ -79,10 +47,6 @@ async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Respo
         let mutation: Vec<Mutation> =
             serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
         let mut mutation = mutation[0].clone();
-        if status_filter.is_some() && &mutation.status != status_filter.unwrap() {
-            continue;
-        }
-
         mutation.stdout = None;
         mutation.stderr = None;
         mutations.push(mutation);
@@ -109,6 +73,50 @@ async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Respond
     let mutation = mutation[0].clone();
 
     HttpResponse::Ok().json(mutation)
+}
+
+#[post("/get_work")]
+async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
+    // Get Authorization header
+    let auth_header = request.headers().get("Authorization");
+    if auth_header.is_none() {
+        return HttpResponse::Unauthorized().body("Missing Authorization header");
+    }
+
+    // Get the token from the Authorization header
+    let auth_header = auth_header.unwrap().to_str().unwrap();
+    let owner = is_authorized(auth_header.to_string(), ctx.tokens.clone());
+    if owner.is_none() {
+        return HttpResponse::Unauthorized().body("Invalid token");
+    }
+
+    let mut con = ctx
+        .redis_client
+        .get_connection()
+        .expect("Failed to get redis connection");
+
+    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
+
+    for key in keys {
+        let mutation: String = con
+            .json_get(&key, "$")
+            .expect("Failed to get mutation from redis");
+
+        let mut mutation: Vec<Mutation> =
+            serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
+        let mut mutation = mutation.pop().unwrap();
+        if mutation.status == MutationStatus::Pending {
+            mutation.status = MutationStatus::Running;
+            mutation.start_time = Some(OffsetDateTime::now_utc());
+            let _: () = con
+                .json_set(&key, "$", &mutation)
+                .expect("Failed to store mutation");
+            println!("Mutation sent to worker {}: {}", owner.as_ref().unwrap(), mutation.id);
+            return HttpResponse::Ok().json(mutation);
+        }
+    }
+
+    HttpResponse::NoContent().finish()
 }
 
 #[post("/mutations/{id}")]
@@ -178,7 +186,7 @@ async fn add_mutations(
     }
 
     for mutation in mutations.into_inner() {
-        store_mutation(&ctx, mutation);
+        store_mutation(&ctx.redis_client, mutation);
     }
 
     HttpResponse::Ok().finish()
@@ -193,7 +201,6 @@ struct Token {
 struct Context {
     redis_client: redis::Client,
     tokens: Vec<Token>,
-    mutation_repo: String,
 }
 
 fn is_authorized(token: String, tokens: Vec<Token>) -> Option<String> {
@@ -206,7 +213,7 @@ fn is_authorized(token: String, tokens: Vec<Token>) -> Option<String> {
     None
 }
 
-pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>, mutation_repo: String) {
+pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>) {
     println!("Starting server on {}:{}", host, port);
 
     // Parse tokens : Owner:Token
@@ -240,9 +247,9 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>,
             .app_data(web::Data::new(Context {
                 redis_client: redis_client.clone(),
                 tokens: parsed_tokens.clone(),
-                mutation_repo: mutation_repo.clone(),
             }))
             .service(list_mutations)
+            .service(get_work)
             .service(index)
             .service(add_mutations)
             .service(submit_mutation_result)
