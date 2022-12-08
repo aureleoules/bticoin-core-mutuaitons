@@ -4,10 +4,10 @@ use actix_web::{
     web::{self},
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
+use common::{Mutation, MutationResult, MutationStatus};
 use redis::{Commands, JsonCommands};
 use time::OffsetDateTime;
 
-use crate::{Mutation, MutationResult, MutationStatus};
 fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
     let key = mutation.id.clone();
     let mut con = redis_client
@@ -111,7 +111,11 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
             let _: () = con
                 .json_set(&key, "$", &mutation)
                 .expect("Failed to store mutation");
-            println!("Mutation sent to worker {}: {}", owner.as_ref().unwrap(), mutation.id);
+            println!(
+                "Mutation sent to worker {}: {}",
+                owner.as_ref().unwrap(),
+                mutation.id
+            );
             return HttpResponse::Ok().json(mutation);
         }
     }
@@ -139,7 +143,12 @@ async fn submit_mutation_result(
     }
 
     let key = id.into_inner();
-    println!("Received result for mutation {} from {}: {:?}", key, owner.unwrap(), result.status);
+    println!(
+        "Received result for mutation {} from {}: {:?}",
+        key,
+        owner.unwrap(),
+        result.status
+    );
     let mut con = ctx
         .redis_client
         .get_connection()
@@ -194,8 +203,8 @@ async fn add_mutations(
 
 #[derive(Clone, Debug)]
 struct Token {
-    Owner: String,
-    Token: String,
+    owner: String,
+    token: String,
 }
 
 struct Context {
@@ -205,15 +214,20 @@ struct Context {
 
 fn is_authorized(token: String, tokens: Vec<Token>) -> Option<String> {
     for t in tokens {
-        if t.Token == token {
-            return Some(t.Owner);
+        if t.token == token {
+            return Some(t.owner);
         }
     }
 
     None
 }
 
-pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>) {
+pub async fn run(
+    host: String,
+    port: u16,
+    redis_ip: String,
+    tokens: Vec<String>,
+) -> std::io::Result<()> {
     println!("Starting server on {}:{}", host, port);
 
     // Parse tokens : Owner:Token
@@ -224,8 +238,8 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>)
             panic!("Invalid token: {}", token);
         }
         parsed_tokens.push(Token {
-            Owner: parts[0].to_string(),
-            Token: parts[1].to_string(),
+            owner: parts[0].to_string(),
+            token: parts[1].to_string(),
         });
 
         println!("Added token for {}", parts[0]);
@@ -258,5 +272,7 @@ pub async fn run(host: String, port: u16, redis_ip: String, tokens: Vec<String>)
     .bind(format!("{}:{}", host, port))
     .unwrap()
     .run()
-    .await;
+    .await?;
+
+    Ok(())
 }

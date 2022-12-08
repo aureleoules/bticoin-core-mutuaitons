@@ -1,8 +1,6 @@
+use common::{Mutation, MutationStatus};
 use fancy_regex::Regex;
 use lazy_static::lazy_static;
-
-
-use crate::{Mutation, MutationStatus};
 
 lazy_static! {
     static ref MUTATORS: Vec<(Regex, String)> = get_mutators();
@@ -54,10 +52,7 @@ fn get_mutators() -> Vec<(Regex, String)> {
 pub fn create_mutations(lines: &Vec<&str>, muts: &mut Vec<(usize, String)>) {
     for (i, line) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.starts_with("//")
-            || trimmed.starts_with('*')
-            || trimmed.starts_with("assert")
-        {
+        if trimmed.starts_with("//") || trimmed.starts_with('*') || trimmed.starts_with("assert") {
             continue;
         }
 

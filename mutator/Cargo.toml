@@ -1,0 +1,18 @@
+[package]
+name = "mutator"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4.0", features = ["derive"] }
+lazy_static = "1.4"
+fancy-regex = "0.10"
+reqwest = "0.11"
+actix-web = "4.2"
+common = { path = "../common" }
+diffy = "0.3"
+md5 = "0.7"
+hex = "0.4"
+serde_json = "^1.0"

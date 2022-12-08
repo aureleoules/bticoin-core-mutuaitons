@@ -1,10 +1,8 @@
-use std::{
-    io::{BufRead, BufReader},
-};
+use std::io::{BufRead, BufReader};
 
 use wait_timeout::ChildExt;
 
-use crate::{Mutation, MutationResult, MutationStatus};
+use common::{Mutation, MutationResult, MutationStatus};
 
 pub async fn execute_mutations(
     server: &str,
