@@ -1,0 +1,273 @@
+{
+  "db": "SQLite",
+  "26105e7ec66e77da2a5e8d5a89e2ece11493d17c316beb59683f195979c4a8a4": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch_md5",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "file",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "line",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "pr_number",
+          "ordinal": 6,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "stderr",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "stdout",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "start_time",
+          "ordinal": 10,
+          "type_info": "Int64"
+        },
+        {
+          "name": "end_time",
+          "ordinal": 11,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT * FROM mutations WHERE status = ?"
+  },
+  "a6d57d3e6246a741e37494291f83f377b8fd70bf79eb4be46009327e20f8c802": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT id FROM mutations WHERE patch_md5 = ?"
+  },
+  "ac6f5c9c19dc4b069e190c416550762b57998c5932dae1866b84c22aeaa10c94": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch_md5",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "file",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "line",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "pr_number",
+          "ordinal": 6,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "stderr",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "stdout",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "start_time",
+          "ordinal": 10,
+          "type_info": "Int64"
+        },
+        {
+          "name": "end_time",
+          "ordinal": 11,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT * FROM mutations WHERE status = ? LIMIT 1"
+  },
+  "bdf1253334a9b6ebf07a7e59b1633543d6ed2fe1ab84968f93b519ab197c4a8a": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch_md5",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "file",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "line",
+          "ordinal": 3,
+          "type_info": "Int64"
+        },
+        {
+          "name": "patch",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "branch",
+          "ordinal": 5,
+          "type_info": "Text"
+        },
+        {
+          "name": "pr_number",
+          "ordinal": 6,
+          "type_info": "Int64"
+        },
+        {
+          "name": "status",
+          "ordinal": 7,
+          "type_info": "Text"
+        },
+        {
+          "name": "stderr",
+          "ordinal": 8,
+          "type_info": "Text"
+        },
+        {
+          "name": "stdout",
+          "ordinal": 9,
+          "type_info": "Text"
+        },
+        {
+          "name": "start_time",
+          "ordinal": 10,
+          "type_info": "Int64"
+        },
+        {
+          "name": "end_time",
+          "ordinal": 11,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "SELECT * FROM mutations WHERE id = ?"
+  }
+}
