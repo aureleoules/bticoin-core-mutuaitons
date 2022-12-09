@@ -114,7 +114,7 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
                     .body(format!("Error updating mutation: {}", e)),
             }
         }
-        Err(e) => HttpResponse::Ok().body(format!("No work available: {}", e)),
+        Err(e) => HttpResponse::NoContent().body(format!("No work available: {}", e)),
     }
 }
 
