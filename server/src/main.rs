@@ -14,7 +14,7 @@ struct Args {
     #[clap(long, help = "Port", default_value = "8080")]
     port: u16,
     #[clap(long, help = "SQLite database", default_value = "sqlite://data.db")]
-    redis: String,
+    db: String,
     #[clap(
         long = "token",
         help = "Authorized tokens (owner:token)",
@@ -27,7 +27,7 @@ struct Args {
 async fn main() {
     dotenv().ok();
     let args = Args::parse();
-    if server::run(args.host, args.port, args.redis, args.tokens)
+    if server::run(args.host, args.port, args.db, args.tokens)
         .await
         .is_err()
     {

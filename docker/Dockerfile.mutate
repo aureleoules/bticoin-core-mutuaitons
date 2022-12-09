@@ -15,7 +15,7 @@ COPY common ./common
 COPY mutator ./mutator
 RUN cd mutator && cargo build --release
 
-FROM debian:buster-slim AS runtime
+FROM debian:bullseye AS runtime
 WORKDIR app
 COPY --from=builder /app/mutator/target/release/mutator /usr/local/bin/bcm-mutator
 

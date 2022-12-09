@@ -5,6 +5,7 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use common::{Mutation, MutationResult, MutationStatus};
+use serde::{Serialize, Deserialize};
 use sqlx::sqlite::{self, SqlitePool};
 
 async fn store_mutation(ctx: &Context, mutation: Mutation) {
@@ -42,9 +43,19 @@ async fn store_mutation(ctx: &Context, mutation: Mutation) {
 async fn index() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Params {
+    status: Option<String>
+}
 #[get("/mutations")]
-async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
-    let mutations = sqlx::query_as!(Mutation, "SELECT * FROM mutations")
+async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
+    let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
+    let status_filter = params.status.as_ref();
+
+    let default_status = MutationStatus::NotKilled.to_string();
+    let filter = status_filter.unwrap_or(&default_status);
+    let mutations = sqlx::query_as!(Mutation, "SELECT * FROM mutations WHERE status = ?", filter)
         .fetch_all(&ctx.pool)
         .await
         .unwrap();

@@ -15,7 +15,7 @@ COPY common ./common
 COPY server ./server
 RUN cd server && cargo build --release
 
-FROM debian:buster-slim AS runtime
+FROM debian:bullseye AS runtime
 WORKDIR app
 COPY --from=builder /app/server/target/release/server /usr/local/bin/bcm-server
 
