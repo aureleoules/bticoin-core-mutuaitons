@@ -1,0 +1,15 @@
+docker_builder:
+  env:
+    DOCKER_USERNAME: ENCRYPTED[15289a911a86abb8b421c70fee7e59175b9d0569348a8b0fea2f136954e421f01a24b3597377cab8996bd4e4a28f9252]
+    DOCKER_PASSWORD: ENCRYPTED[0129cb13ab97cab32e6eab8159b78d6cb188cfb8c55344f643b647655e2604aa966a30c4abbe81668ecb4fd2496f14ad]
+  build_script: 
+    - docker build -t aureleoules/bcm-server -f docker/Dockerfile.server .
+    - docker build -t aureleoules/bcm-mutator -f docker/Dockerfile.mutate .
+    - docker build -t aureleoules/bcm-builder -f docker/Dockerfile.builder .
+    - docker build -t aureleoules/bcm-worker -f docker/Dockerfile.worker .
+  login_script: docker login --username $DOCKER_USERNAME --password $DOCKER_PASSWORD
+  push_script: 
+    - docker push aureleoules/bcm-server
+    - docker push aureleoules/bcm-mutator
+    - docker push aureleoules/bcm-builder
+    - docker push aureleoules/bcm-worker
