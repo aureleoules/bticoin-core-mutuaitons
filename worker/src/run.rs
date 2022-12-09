@@ -37,15 +37,26 @@ pub async fn execute_mutations(
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
+        let branch = if mutation.branch.is_some() {
+            mutation.branch.unwrap()
+        } else {
+            todo!("Handle this case")
+        };
+
         let mut cmd_str = format!(
             "git stash && git checkout {} && git pull origin {}",
-            mutation.branch, mutation.branch
+            branch, branch
         );
 
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
-        std::fs::write(&patch_path, mutation.patch)?;
-        cmd_str = format!("{} && patch {} {}", cmd_str, mutation.file, patch_path);
+        std::fs::write(&patch_path, mutation.patch.unwrap())?;
+        cmd_str = format!(
+            "{} && patch {} {}",
+            cmd_str,
+            mutation.file.unwrap(),
+            patch_path
+        );
         cmd_str = format!("{} && {}", cmd_str, build_cmd);
         cmd_str = format!("{} && {}", cmd_str, test_cmd);
         cmd.arg(cmd_str.clone());
@@ -95,7 +106,7 @@ pub async fn execute_mutations(
         let res = client
             .post(&format!("{}/mutations/{}", server, mutation.id))
             .body(serde_json::to_string(&MutationResult {
-                mutation_id: mutation.id,
+                mutation_id: mutation.patch_md5.unwrap(),
                 status,
                 stdout: Some(stdout_str),
                 stderr: Some(stderr_str),

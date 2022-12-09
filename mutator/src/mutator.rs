@@ -89,13 +89,14 @@ pub fn create_mutations_from_files(files: &Vec<String>) -> Vec<Mutation> {
             let md5 = md5::compute(patch.to_bytes()).to_vec();
             let md5 = hex::encode(md5);
             let m = Mutation {
-                id: md5,
-                file: file.clone(),
-                line,
-                patch: patch.to_string(),
-                branch: "master".to_string(),
+                id: 0,
+                file: Some(file.clone()),
+                patch_md5: Some(md5),
+                line: Some(line as i64),
+                patch: Some(patch.to_string()),
+                branch: Some("master".to_string()),
                 pr_number: None,
-                status: MutationStatus::Pending,
+                status: Some(MutationStatus::Pending.to_string()),
                 start_time: None,
                 end_time: None,
                 stderr: None,
@@ -142,7 +143,7 @@ mod test {
         for (to_be_mutated, expected_results) in data {
             let mut mutations: Vec<(usize, String)> = vec![];
             let lines: Vec<&str> = vec![&to_be_mutated];
-            let mut success = true;
+            let _success = true;
             create_mutations(&lines, &mut mutations);
             assert_eq!(mutations.len(), expected_results.len());
 

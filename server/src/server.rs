@@ -5,24 +5,38 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use common::{Mutation, MutationResult, MutationStatus};
-use redis::{Commands, JsonCommands};
-use time::OffsetDateTime;
+use sqlx::sqlite::{self, SqlitePool};
 
-fn store_mutation(redis_client: &redis::Client, mutation: Mutation) {
-    let key = mutation.id.clone();
-    let mut con = redis_client
-        .get_connection()
-        .expect("Failed to get redis connection");
+async fn store_mutation(ctx: &Context, mutation: Mutation) {
+    let exists = sqlx::query!(
+        "SELECT id FROM mutations WHERE patch_md5 = ?",
+        mutation.patch_md5
+    )
+    .fetch_one(&ctx.pool)
+    .await
+    .is_ok();
 
-    if con.exists(&key).unwrap() {
-        println!("Mutation already exists: {}", mutation.id);
+    if exists {
+        println!("Mutation already exists");
         return;
     }
 
-    let _: () = con
-        .json_set(&key, "$", &mutation)
-        .expect("Failed to store mutation");
-    println!("Stored mutation: {}", mutation.id);
+    let r = sqlx::query(
+        "INSERT INTO mutations (patch_md5, file, line, patch, branch, pr_number, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    ).bind(mutation.patch_md5)
+        .bind(mutation.file)
+        .bind(mutation.line)
+        .bind(mutation.patch)
+        .bind(mutation.branch)
+        .bind(mutation.pr_number)
+        .bind(mutation.status)
+        .execute(&ctx.pool)
+        .await;
+
+    match r {
+        Ok(_) => println!("Mutation stored"),
+        Err(e) => println!("Error storing mutation: {}", e),
+    }
 }
 #[get("/")]
 async fn index() -> impl Responder {
@@ -30,27 +44,10 @@ async fn index() -> impl Responder {
 }
 #[get("/mutations")]
 async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
-    let mut mutations = Vec::new();
-
-    let mut con = ctx
-        .redis_client
-        .get_connection()
-        .expect("Failed to get redis connection");
-
-    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
-
-    for key in keys {
-        let mutation: String = con
-            .json_get(&key, "$")
-            .expect("Failed to get mutation from redis");
-
-        let mutation: Vec<Mutation> =
-            serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
-        let mut mutation = mutation[0].clone();
-        mutation.stdout = None;
-        mutation.stderr = None;
-        mutations.push(mutation);
-    }
+    let mutations = sqlx::query_as!(Mutation, "SELECT * FROM mutations")
+        .fetch_all(&ctx.pool)
+        .await
+        .unwrap();
 
     HttpResponse::Ok().json(mutations)
 }
@@ -59,18 +56,10 @@ async fn list_mutations(ctx: web::Data<Context>) -> impl Responder {
 async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Responder {
     let id = req.match_info().get("id").unwrap_or("0");
 
-    let mut con = ctx
-        .redis_client
-        .get_connection()
-        .expect("Failed to get redis connection");
-
-    let mutation: String = con
-        .json_get(&id, "$")
-        .expect("Failed to get mutation from redis");
-
-    let mutation: Vec<Mutation> =
-        serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
-    let mutation = mutation[0].clone();
+    let mutation = sqlx::query_as!(Mutation, "SELECT * FROM mutations WHERE id = ?", id)
+        .fetch_one(&ctx.pool)
+        .await
+        .unwrap();
 
     HttpResponse::Ok().json(mutation)
 }
@@ -90,37 +79,32 @@ async fn get_work(request: HttpRequest, ctx: web::Data<Context>) -> impl Respond
         return HttpResponse::Unauthorized().body("Invalid token");
     }
 
-    let mut con = ctx
-        .redis_client
-        .get_connection()
-        .expect("Failed to get redis connection");
+    let status = MutationStatus::Pending.to_string();
+    let mutation = sqlx::query_as!(
+        Mutation,
+        "SELECT * FROM mutations WHERE status = ? LIMIT 1",
+        status
+    )
+    .fetch_one(&ctx.pool)
+    .await;
 
-    let keys: Vec<String> = con.keys("*").expect("Failed to get keys");
+    match mutation {
+        Ok(mutation) => {
+            let r = sqlx::query("UPDATE mutations SET status = ?, start_time = ? WHERE id = ?")
+                .bind(MutationStatus::Running.to_string())
+                .bind(chrono::Utc::now().timestamp())
+                .bind(mutation.id)
+                .execute(&ctx.pool)
+                .await;
 
-    for key in keys {
-        let mutation: String = con
-            .json_get(&key, "$")
-            .expect("Failed to get mutation from redis");
-
-        let mut mutation: Vec<Mutation> =
-            serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
-        let mut mutation = mutation.pop().unwrap();
-        if mutation.status == MutationStatus::Pending {
-            mutation.status = MutationStatus::Running;
-            mutation.start_time = Some(OffsetDateTime::now_utc());
-            let _: () = con
-                .json_set(&key, "$", &mutation)
-                .expect("Failed to store mutation");
-            println!(
-                "Mutation sent to worker {}: {}",
-                owner.as_ref().unwrap(),
-                mutation.id
-            );
-            return HttpResponse::Ok().json(mutation);
+            match r {
+                Ok(_) => HttpResponse::Ok().json(mutation),
+                Err(e) => HttpResponse::InternalServerError()
+                    .body(format!("Error updating mutation: {}", e)),
+            }
         }
+        Err(e) => HttpResponse::Ok().body(format!("No work available: {}", e)),
     }
-
-    HttpResponse::NoContent().finish()
 }
 
 #[post("/mutations/{id}")]
@@ -149,32 +133,41 @@ async fn submit_mutation_result(
         owner.unwrap(),
         result.status
     );
-    let mut con = ctx
-        .redis_client
-        .get_connection()
-        .expect("Failed to get redis connection");
 
-    let mutation: String = con
-        .json_get(&key, "$")
-        .expect("Failed to get mutation from redis");
+    let mutation = sqlx::query_as!(Mutation, "SELECT * FROM mutations WHERE id = ?", key)
+        .fetch_one(&ctx.pool)
+        .await;
 
-    let mut mutation: Vec<Mutation> =
-        serde_json::from_slice(mutation.as_bytes()).expect("Failed to deserialize mutation");
-    let mut mutation = mutation.pop().unwrap();
-    mutation.status = result.status.clone();
-    if result.stderr.is_some() {
-        mutation.stderr = result.stderr.clone();
+    match mutation {
+        Ok(mut mutation) => {
+            if result.stderr.is_some() {
+                mutation.stderr = result.clone().stderr;
+            }
+
+            if result.stdout.is_some() {
+                mutation.stdout = result.clone().stdout;
+            }
+
+            let r = sqlx::query(
+                "UPDATE mutations SET status = ?, end_time = ?, stderr = ?, stdout = ? WHERE id = ?",
+            ).bind(result.status.to_string())
+                .bind(chrono::Utc::now().timestamp())
+                .bind(mutation.stderr)
+                .bind(mutation.stdout)
+                .bind(mutation.id)
+                .execute(&ctx.pool)
+                .await;
+
+            match r {
+                Ok(_) => HttpResponse::Ok().body("Mutation result stored"),
+                Err(e) => HttpResponse::InternalServerError()
+                    .body(format!("Error updating mutation: {}", e)),
+            }
+        }
+        Err(e) => {
+            HttpResponse::InternalServerError().body(format!("Error fetching mutation: {}", e))
+        }
     }
-    if result.stdout.is_some() {
-        mutation.stdout = result.stdout.clone();
-    }
-    mutation.end_time = Some(OffsetDateTime::now_utc());
-
-    let _: () = con
-        .json_set(&key, "$", &mutation)
-        .expect("Failed to store mutation");
-
-    HttpResponse::Ok().finish()
 }
 
 #[post("/mutations")]
@@ -195,7 +188,8 @@ async fn add_mutations(
     }
 
     for mutation in mutations.into_inner() {
-        store_mutation(&ctx.redis_client, mutation);
+        println!("Received mutation: {:?}:{:?}", mutation.file, mutation.line);
+        store_mutation(&ctx, mutation).await;
     }
 
     HttpResponse::Ok().finish()
@@ -208,7 +202,7 @@ struct Token {
 }
 
 struct Context {
-    redis_client: redis::Client,
+    pool: SqlitePool,
     tokens: Vec<Token>,
 }
 
@@ -222,12 +216,7 @@ fn is_authorized(token: String, tokens: Vec<Token>) -> Option<String> {
     None
 }
 
-pub async fn run(
-    host: String,
-    port: u16,
-    redis_ip: String,
-    tokens: Vec<String>,
-) -> std::io::Result<()> {
+pub async fn run(host: String, port: u16, db: String, tokens: Vec<String>) -> std::io::Result<()> {
     println!("Starting server on {}:{}", host, port);
 
     // Parse tokens : Owner:Token
@@ -245,8 +234,9 @@ pub async fn run(
         println!("Added token for {}", parts[0]);
     }
 
-    let redis_client = redis::Client::open("redis://".to_string() + &redis_ip)
-        .expect("Failed to connect to redis");
+    let pool = sqlite::SqlitePool::connect(&db)
+        .await
+        .expect("Failed to connect to database");
 
     HttpServer::new(move || {
         let cors = Cors::default()
@@ -259,7 +249,7 @@ pub async fn run(
             .app_data(web::JsonConfig::default().limit(1024 * 1024 * 50))
             .app_data(web::PayloadConfig::new(1 << 25))
             .app_data(web::Data::new(Context {
-                redis_client: redis_client.clone(),
+                pool: pool.clone(),
                 tokens: parsed_tokens.clone(),
             }))
             .service(list_mutations)

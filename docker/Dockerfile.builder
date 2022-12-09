@@ -1,5 +1,5 @@
 # Image used by worker in order to cache dependencies
-FROM debian:buster
+FROM debian:bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libevent-dev libboost-dev libsqlite3-dev ccache git curl wget

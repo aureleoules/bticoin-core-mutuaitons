@@ -1,6 +1,8 @@
+extern crate dotenv;
 use clap::Parser;
 mod server;
 
+use dotenv::dotenv;
 #[derive(Parser, Default)]
 #[command(
     about = "Bitcoin Core Mutations",
@@ -11,7 +13,7 @@ struct Args {
     host: String,
     #[clap(long, help = "Port", default_value = "8080")]
     port: u16,
-    #[clap(long, help = "Redis database", default_value = "127.0.0.1")]
+    #[clap(long, help = "SQLite database", default_value = "sqlite://data.db")]
     redis: String,
     #[clap(
         long = "token",
@@ -23,6 +25,7 @@ struct Args {
 
 #[actix_web::main]
 async fn main() {
+    dotenv().ok();
     let args = Args::parse();
     if server::run(args.host, args.port, args.redis, args.tokens)
         .await
