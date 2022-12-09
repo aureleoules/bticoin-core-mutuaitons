@@ -50,11 +50,11 @@ pub async fn execute_mutations(
 
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
-        std::fs::write(&patch_path, mutation.patch.unwrap())?;
+        std::fs::write(&patch_path, mutation.patch)?;
         cmd_str = format!(
             "{} && patch {} {}",
             cmd_str,
-            mutation.file.unwrap(),
+            mutation.file,
             patch_path
         );
         cmd_str = format!("{} && {}", cmd_str, build_cmd);
@@ -106,7 +106,7 @@ pub async fn execute_mutations(
         let res = client
             .post(&format!("{}/mutations/{}", server, mutation.id))
             .body(serde_json::to_string(&MutationResult {
-                mutation_id: mutation.patch_md5.unwrap(),
+                mutation_id: mutation.patch_md5,
                 status,
                 stdout: Some(stdout_str),
                 stderr: Some(stderr_str),

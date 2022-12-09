@@ -30,13 +30,13 @@ impl std::fmt::Display for MutationStatus {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct Mutation {
     pub id: i64,
-    pub patch_md5: Option<String>,
-    pub file: Option<String>,
-    pub line: Option<i64>,
-    pub patch: Option<String>,
+    pub patch_md5: String,
+    pub file: String,
+    pub line: i64,
+    pub patch: String,
     pub branch: Option<String>,
     pub pr_number: Option<i64>,
-    pub status: Option<String>,
+    pub status: String,
     pub start_time: Option<i64>,
     pub end_time: Option<i64>,
     pub stderr: Option<String>,

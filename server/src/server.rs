@@ -48,6 +48,21 @@ async fn index() -> impl Responder {
 struct Params {
     status: Option<String>
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct MutationListItem {
+    id: i64,
+    patch_md5: String,
+    file: String,
+    line: i64,
+    patch: String,
+    branch: Option<String>,
+    pr_number: Option<i64>,
+    status: String,
+    start_time: Option<i64>,
+    end_time: Option<i64>,
+}
+
 #[get("/mutations")]
 async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
     let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
@@ -55,7 +70,7 @@ async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Respo
 
     let default_status = MutationStatus::NotKilled.to_string();
     let filter = status_filter.unwrap_or(&default_status);
-    let mutations = sqlx::query_as!(Mutation, "SELECT * FROM mutations WHERE status = ?", filter)
+    let mutations = sqlx::query_as!(MutationListItem, "SELECT id, patch_md5, file, line, patch, branch, pr_number, status, start_time, end_time FROM mutations WHERE status = ?", filter)
         .fetch_all(&ctx.pool)
         .await
         .unwrap();
