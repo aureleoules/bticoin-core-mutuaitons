@@ -1,6 +1,6 @@
 {
   "db": "SQLite",
-  "26105e7ec66e77da2a5e8d5a89e2ece11493d17c316beb59683f195979c4a8a4": {
+  "9cd5617d8432b0fe444212bb481a2f88db49d0f5f341f187348f91c4ed97bd99": {
     "describe": {
       "columns": [
         {
@@ -44,37 +44,25 @@
           "type_info": "Text"
         },
         {
-          "name": "stderr",
-          "ordinal": 8,
-          "type_info": "Text"
-        },
-        {
-          "name": "stdout",
-          "ordinal": 9,
-          "type_info": "Text"
-        },
-        {
           "name": "start_time",
-          "ordinal": 10,
+          "ordinal": 8,
           "type_info": "Int64"
         },
         {
           "name": "end_time",
-          "ordinal": 11,
+          "ordinal": 9,
           "type_info": "Int64"
         }
       ],
       "nullable": [
         false,
+        false,
+        false,
+        false,
+        false,
         true,
         true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
+        false,
         true,
         true
       ],
@@ -82,7 +70,7 @@
         "Right": 1
       }
     },
-    "query": "SELECT * FROM mutations WHERE status = ?"
+    "query": "SELECT id, patch_md5, file, line, patch, branch, pr_number, status, start_time, end_time FROM mutations WHERE status = ?"
   },
   "a6d57d3e6246a741e37494291f83f377b8fd70bf79eb4be46009327e20f8c802": {
     "describe": {
@@ -168,13 +156,13 @@
       ],
       "nullable": [
         false,
+        false,
+        false,
+        false,
+        false,
         true,
         true,
-        true,
-        true,
-        true,
-        true,
-        true,
+        false,
         true,
         true,
         true,
@@ -252,13 +240,13 @@
       ],
       "nullable": [
         false,
+        false,
+        false,
+        false,
+        false,
         true,
         true,
-        true,
-        true,
-        true,
-        true,
-        true,
+        false,
         true,
         true,
         true,
