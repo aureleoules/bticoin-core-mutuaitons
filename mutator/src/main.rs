@@ -1,5 +1,7 @@
 use clap::Parser;
-mod mutator;
+use common::Mutation;
+pub mod mutate;
+pub mod mutators;
 
 #[derive(Parser, Default)]
 #[command(
@@ -26,11 +28,31 @@ async fn main() {
         return;
     }
 
-    let mutations = mutator::create_mutations_from_files(&files);
+    let mutations = mutate::generate_mutations_from_files(&files);
 
-    let r = mutator::send_mutations(args.server, mutations, &args.token).await;
+    let r = send_mutations(args.server, mutations, &args.token).await;
 
     if r.is_err() {
         panic!("Mutator failed with error: {}", r.unwrap_err());
     }
+}
+
+pub async fn send_mutations(
+    server: String,
+    mutations: Vec<Mutation>,
+    token: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let client = reqwest::Client::new();
+
+    let body = serde_json::to_string(&mutations)?;
+    let res = client
+        .post(&format!("{}/mutations", server))
+        .body(body)
+        .header("Content-Type", "application/json")
+        .header("Authorization", token)
+        .send()
+        .await?;
+
+    println!("Sent mutation: {}", res.status());
+    Ok(())
 }
