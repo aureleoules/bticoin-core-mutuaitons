@@ -147,7 +147,6 @@ impl BoolAritmeticMutator {
     }
 }
 
-
 pub struct IncDecMutator {
     patterns: Vec<SimpleMutation>,
 }
@@ -182,4 +181,3 @@ impl IncDecMutator {
         }
     }
 }
-

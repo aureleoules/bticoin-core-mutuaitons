@@ -1,6 +1,6 @@
 use crate::mutators::{
     execution_flow::ExecutionFlowMutator,
-    operator::{BoolAritmeticMutator, BoolOperatorMutator, OperatorMutator, IncDecMutator},
+    operator::{BoolAritmeticMutator, BoolOperatorMutator, IncDecMutator, OperatorMutator},
     std_algorithm::StdAlgorithmMutator,
     Mutator, MutatorContext,
 };
@@ -23,7 +23,11 @@ pub fn generate_mutations(content: &str, lines: &Vec<&str>) -> Vec<(usize, Strin
 
     for (i, line) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
-        if trimmed.starts_with("//") || trimmed.starts_with('*') || trimmed.starts_with("assert") {
+        if trimmed.starts_with("//")
+            || trimmed.starts_with('*')
+            || trimmed.starts_with("assert")
+            || trimmed.starts_with("/*")
+        {
             continue;
         }
 
