@@ -5,7 +5,7 @@ use actix_web::{
     App, HttpRequest, HttpResponse, HttpServer, Responder,
 };
 use common::{Mutation, MutationResult, MutationStatus};
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{self, SqlitePool};
 
 async fn store_mutation(ctx: &Context, mutation: Mutation) {
@@ -46,7 +46,7 @@ async fn index() -> impl Responder {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Params {
-    status: Option<String>
+    status: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
