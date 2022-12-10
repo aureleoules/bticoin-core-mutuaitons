@@ -52,12 +52,7 @@ pub async fn execute_mutations(
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
         std::fs::write(&patch_path, mutation.patch)?;
-        cmd_str = format!(
-            "{} && patch {} {}",
-            cmd_str,
-            mutation.file,
-            patch_path
-        );
+        cmd_str = format!("{} && patch {} {}", cmd_str, mutation.file, patch_path);
         cmd_str = format!("{} && {}", cmd_str, build_cmd);
         cmd_str = format!("{} && {}", cmd_str, test_cmd);
         cmd.arg(cmd_str.clone());
