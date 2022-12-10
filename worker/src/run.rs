@@ -65,19 +65,28 @@ pub async fn execute_mutations(
         let stdout = BufReader::new(stdout);
         let stderr = BufReader::new(stderr);
 
-        // Store stdout and stderr and print to console
-        let mut stdout_str = String::new();
-        let mut stderr_str = String::new();
-        for line in stdout.lines() {
-            let line = line.unwrap();
-            stdout_str = format!("{}\n{}", stdout_str, line);
-            println!("stdout: {}", line);
-        }
-        for line in stderr.lines() {
-            let line = line.unwrap();
-            stderr_str = format!("{}\n{}", stderr_str, line);
-            println!("stderr: {}", line);
-        }
+        // separate thread to read stdout and stderr
+        let stdout_handle = std::thread::spawn(move || {
+            let mut stdout_str = String::new();
+            for line in stdout.lines() {
+                let line = line.unwrap();
+                stdout_str = format!("{}\n{}", stdout_str, line);
+                println!("stdout: {}", line);
+            }
+
+            stdout_str
+        });
+
+        let stderr_handle = std::thread::spawn(move || {
+            let mut stderr_str = String::new();
+            for line in stderr.lines() {
+                let line = line.unwrap();
+                stderr_str = format!("{}\n{}", stderr_str, line);
+                println!("stderr: {}", line);
+            }
+
+            stderr_str
+        });
 
         let status = match child
             .wait_timeout(std::time::Duration::from_secs(timeout))
@@ -85,10 +94,15 @@ pub async fn execute_mutations(
         {
             Some(status) => status.code(),
             None => {
+                println!("Timeout reached, killing process");
                 child.kill().unwrap();
+
                 None
             }
         };
+
+        let stdout_str = stdout_handle.join().unwrap();
+        let stderr_str = stderr_handle.join().unwrap();
 
         let status = match status {
             Some(0) => MutationStatus::NotKilled,
