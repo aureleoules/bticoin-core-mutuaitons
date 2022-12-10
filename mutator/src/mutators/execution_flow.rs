@@ -6,8 +6,8 @@ pub struct ExecutionFlowMutator {
     patterns: Vec<SimpleMutation>,
 }
 
-impl ExecutionFlowMutator {
-    pub fn new() -> Self {
+impl Default for ExecutionFlowMutator {
+    fn default() -> Self {
         Self {
             patterns: vec![
                 SimpleMutation {
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_execution_flow_mutator() {
-        let mutator = ExecutionFlowMutator::new();
+        let mutator = ExecutionFlowMutator::default();
 
         let tests = vec![
             TestCase {

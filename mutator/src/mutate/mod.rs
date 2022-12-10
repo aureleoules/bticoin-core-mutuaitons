@@ -9,16 +9,16 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref MUTATORS: Vec<Box<dyn Mutator + Sync>> = vec![
-        Box::new(OperatorMutator::new()),
-        Box::new(BoolOperatorMutator::new()),
-        Box::new(ExecutionFlowMutator::new()),
-        Box::new(StdAlgorithmMutator::new()),
-        Box::new(BoolAritmeticMutator::new()),
-        Box::new(IncDecMutator::new()),
+        Box::new(OperatorMutator::default()),
+        Box::new(BoolOperatorMutator::default()),
+        Box::new(ExecutionFlowMutator::default()),
+        Box::new(StdAlgorithmMutator::default()),
+        Box::new(BoolAritmeticMutator::default()),
+        Box::new(IncDecMutator::default()),
     ];
 }
 
-pub fn generate_mutations(content: &str, lines: &Vec<&str>) -> Vec<(usize, String)> {
+pub fn generate_mutations(content: String, lines: &[&str]) -> Vec<(usize, String)> {
     let mut mutations = vec![];
 
     for (i, line) in lines.iter().enumerate() {
@@ -33,7 +33,7 @@ pub fn generate_mutations(content: &str, lines: &Vec<&str>) -> Vec<(usize, Strin
 
         for m in MUTATORS.iter() {
             let ctx = MutatorContext {
-                file: content.clone().to_string(),
+                file: content.clone(),
                 line: i,
                 line_content: line.to_string(),
             };
@@ -54,7 +54,7 @@ pub fn generate_mutations_from_files(files: &Vec<String>) -> Vec<Mutation> {
         let content = std::fs::read_to_string(&file).unwrap();
         let lines = content.split('\n').collect::<Vec<&str>>();
 
-        let muts = generate_mutations(&content, &lines);
+        let muts = generate_mutations(content.clone(), &lines);
 
         println!("{} mutations found", muts.len());
 

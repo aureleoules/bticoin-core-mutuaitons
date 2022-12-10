@@ -20,8 +20,8 @@ impl Mutator for StdAlgorithmMutator {
     }
 }
 
-impl StdAlgorithmMutator {
-    pub fn new() -> Self {
+impl Default for StdAlgorithmMutator {
+    fn default() -> Self {
         let patterns = vec![
             SimpleMutation {
                 from: Regex::new(r"std::sort").unwrap(),

@@ -20,8 +20,8 @@ impl Mutator for OperatorMutator {
     }
 }
 
-impl OperatorMutator {
-    pub fn new() -> Self {
+impl Default for OperatorMutator {
+    fn default() -> Self {
         Self {
             patterns: vec![
                 SimpleMutation {
@@ -71,8 +71,8 @@ impl Mutator for BoolOperatorMutator {
     }
 }
 
-impl BoolOperatorMutator {
-    pub fn new() -> Self {
+impl Default for BoolOperatorMutator {
+    fn default() -> Self {
         Self {
             patterns: vec![
                 SimpleMutation {
@@ -118,8 +118,8 @@ impl Mutator for BoolAritmeticMutator {
     }
 }
 
-impl BoolAritmeticMutator {
-    pub fn new() -> Self {
+impl Default for BoolAritmeticMutator {
+    fn default() -> Self {
         Self {
             patterns: vec![
                 SimpleMutation {
@@ -165,8 +165,8 @@ impl Mutator for IncDecMutator {
     }
 }
 
-impl IncDecMutator {
-    pub fn new() -> Self {
+impl Default for IncDecMutator {
+    fn default() -> Self {
         Self {
             patterns: vec![
                 SimpleMutation {

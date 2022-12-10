@@ -25,25 +25,22 @@ fn simple_mutate(line: &str, patterns: &Vec<SimpleMutation>) -> Vec<String> {
     let mut mutations = vec![];
 
     for simple_mutation in patterns {
-        let matches = simple_mutation.from.find_iter(line).collect::<Vec<_>>();
+        let matches = simple_mutation.from.find_iter(line);
 
         let string_litterals = find_string_literals(line);
 
-        for m in matches {
-            // Result<Match, Error>
-            if let Ok(m) = m {
-                if string_litterals
-                    .iter()
-                    .any(|(start, end)| m.start() >= *start && m.end() <= *end)
-                {
-                    continue;
-                }
+        for m in matches.flatten() {
+            if string_litterals
+                .iter()
+                .any(|(start, end)| m.start() >= *start && m.end() <= *end)
+            {
+                continue;
+            }
 
-                for to in &simple_mutation.to {
-                    let mut mutated_line = line.to_string();
-                    mutated_line.replace_range(m.start()..m.end(), to);
-                    mutations.push(mutated_line);
-                }
+            for to in &simple_mutation.to {
+                let mut mutated_line = line.to_string();
+                mutated_line.replace_range(m.start()..m.end(), to);
+                mutations.push(mutated_line);
             }
         }
     }
@@ -61,11 +58,9 @@ fn find_string_literals(line: &str) -> Vec<(usize, usize)> {
                 in_string = false;
                 result.push((start, i));
             }
-        } else {
-            if c == '"' {
-                in_string = true;
-                start = i;
-            }
+        } else if c == '"' {
+            in_string = true;
+            start = i;
         }
     }
     result
