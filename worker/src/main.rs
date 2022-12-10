@@ -27,6 +27,8 @@ struct Args {
     test_cmd: String,
     #[clap(long, help = "Token to use for authentication")]
     token: String,
+    #[clap(long, help = "Timeout (seconds)", default_value = 60*60)]
+    timeout: u64,
 }
 
 #[actix_web::main]
@@ -44,6 +46,7 @@ async fn main() {
         &args.path,
         &args.build_cmd,
         &args.test_cmd,
+        &args.timeout,
         &args.token,
     )
     .await;

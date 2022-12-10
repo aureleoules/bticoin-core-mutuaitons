@@ -9,6 +9,7 @@ pub async fn execute_mutations(
     path: &str,
     build_cmd: &str,
     test_cmd: &str,
+    timeout: u64,
     token: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     println!("Running mutations...");
@@ -84,7 +85,7 @@ pub async fn execute_mutations(
         }
 
         let status = match child
-            .wait_timeout(std::time::Duration::from_secs(60 * 60))
+            .wait_timeout(std::time::Duration::from_secs(timeout))
             .unwrap()
         {
             Some(status) => status.code(),
