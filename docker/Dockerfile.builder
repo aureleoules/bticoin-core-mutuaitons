@@ -3,7 +3,7 @@ FROM debian:bullseye
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt install -y build-essential libtool autotools-dev automake pkg-config bsdmainutils python3 libevent-dev libboost-dev libsqlite3-dev ccache git curl wget
-RUN ccache -F 1000000000 && ccache -M 1000000000
+RUN ccache -F 1000 && ccache -M 10G
 
 # Initial build of the project to cache objects
 RUN git clone https://github.com/bitcoin/bitcoin.git /tmp/bitcoin
