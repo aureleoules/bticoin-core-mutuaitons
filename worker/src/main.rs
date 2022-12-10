@@ -27,7 +27,7 @@ struct Args {
     test_cmd: String,
     #[clap(long, help = "Token to use for authentication")]
     token: String,
-    #[clap(long, help = "Timeout (seconds)", default_value = 60*60)]
+    #[clap(long, help = "Timeout (seconds)", default_value = "1800")]
     timeout: u64,
 }
 
@@ -46,7 +46,7 @@ async fn main() {
         &args.path,
         &args.build_cmd,
         &args.test_cmd,
-        &args.timeout,
+        args.timeout,
         &args.token,
     )
     .await;
