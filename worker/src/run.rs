@@ -45,7 +45,7 @@ pub async fn execute_mutations(
         };
 
         let mut cmd_str = format!(
-            "git stash && git checkout {} && git pull origin {}",
+            "git reset --hard && git checkout {} && git pull origin {}",
             branch, branch
         );
 
