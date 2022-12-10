@@ -11,8 +11,8 @@ impl Default for ExecutionFlowMutator {
         Self {
             patterns: vec![
                 SimpleMutation {
-                    from: Regex::new(r"return").unwrap(),
-                    to: vec!["break", "continue"],
+                    from: Regex::new(r"return;").unwrap(),
+                    to: vec!["break;", "continue;"],
                 },
                 SimpleMutation {
                     from: Regex::new(r"break").unwrap(),

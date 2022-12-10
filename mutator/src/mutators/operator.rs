@@ -26,27 +26,27 @@ impl Default for OperatorMutator {
             patterns: vec![
                 SimpleMutation {
                     from: Regex::new(r"==").unwrap(),
-                    to: vec!["!=", "<", ">", "<=", ">="],
+                    to: vec!["!="],
                 },
                 SimpleMutation {
                     from: Regex::new(r"!=").unwrap(),
-                    to: vec!["==", "<", ">", "<=", ">="],
+                    to: vec!["=="],
                 },
                 SimpleMutation {
-                    from: Regex::new(r"<").unwrap(),
-                    to: vec!["==", "!=", ">", "<=", ">="],
+                    from: Regex::new(r" < ").unwrap(),
+                    to: vec![" > "],
                 },
                 SimpleMutation {
-                    from: Regex::new(r">").unwrap(),
-                    to: vec!["==", "!=", "<", "<=", ">="],
+                    from: Regex::new(r" > ").unwrap(),
+                    to: vec![" < "],
                 },
                 SimpleMutation {
                     from: Regex::new(r"<=").unwrap(),
-                    to: vec!["==", "!=", "<", ">", ">="],
+                    to: vec![">="],
                 },
                 SimpleMutation {
                     from: Regex::new(r">=").unwrap(),
-                    to: vec!["==", "!=", "<", ">", "<="],
+                    to: vec!["<="],
                 },
             ],
         }
@@ -76,12 +76,12 @@ impl Default for BoolOperatorMutator {
         Self {
             patterns: vec![
                 SimpleMutation {
-                    from: Regex::new(r"&&").unwrap(),
-                    to: vec!["||"],
+                    from: Regex::new(r" && ").unwrap(),
+                    to: vec![" || "],
                 },
                 SimpleMutation {
-                    from: Regex::new(r"\|\|").unwrap(),
-                    to: vec!["&&"],
+                    from: Regex::new(r" \|\| ").unwrap(),
+                    to: vec![" && "],
                 },
                 SimpleMutation {
                     from: Regex::new(r"false").unwrap(),
@@ -124,23 +124,23 @@ impl Default for BoolAritmeticMutator {
             patterns: vec![
                 SimpleMutation {
                     from: Regex::new(r" & ").unwrap(),
-                    to: vec![" | ", " ^ ", " << ", " >> "],
+                    to: vec![r" | ", r" ^ "],
                 },
                 SimpleMutation {
                     from: Regex::new(r" \| ").unwrap(),
-                    to: vec![" & ", " ^ ", " << ", " >> "],
+                    to: vec![r" & ", r" ^ "],
                 },
                 SimpleMutation {
                     from: Regex::new(r" ^ ").unwrap(),
-                    to: vec![" & ", " | ", " << ", " >> "],
+                    to: vec![r" & ", r" | "],
                 },
                 SimpleMutation {
                     from: Regex::new(r" << ").unwrap(),
-                    to: vec![" & ", " | ", " ^ ", " >> "],
+                    to: vec![" >> "],
                 },
                 SimpleMutation {
                     from: Regex::new(r" >> ").unwrap(),
-                    to: vec![" & ", " | ", " ^ ", " << "],
+                    to: vec![" << "],
                 },
             ],
         }

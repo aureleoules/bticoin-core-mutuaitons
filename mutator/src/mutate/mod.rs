@@ -27,6 +27,7 @@ pub fn generate_mutations(content: String, lines: &[&str]) -> Vec<(usize, String
             || trimmed.starts_with('*')
             || trimmed.starts_with("assert")
             || trimmed.starts_with("/*")
+            || trimmed.starts_with("LogPrint")
         {
             continue;
         }
@@ -58,6 +59,7 @@ pub fn generate_mutations_from_files(files: &Vec<String>) -> Vec<Mutation> {
 
         println!("{} mutations found", muts.len());
 
+        println!("Generating patches...");
         // Generate Git diff patch
         for (line, mutation) in muts {
             let mut lines_copy = lines.clone();

@@ -15,6 +15,8 @@ struct Args {
     server: String,
     #[clap(long, help = "Token to use for authentication")]
     token: String,
+    #[clap(long, help = "Debug mode")]
+    debug: bool,
 }
 
 #[actix_web::main]
@@ -29,6 +31,15 @@ async fn main() {
     }
 
     let mutations = mutate::generate_mutations_from_files(&files);
+
+    if args.debug {
+        for m in &mutations {
+            println!("{}", m.patch);
+            println!("---\n");
+        }
+
+        return;
+    }
 
     let r = send_mutations(args.server, mutations, &args.token).await;
 
