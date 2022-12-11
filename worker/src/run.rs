@@ -95,14 +95,18 @@ pub async fn execute_mutations(
             Some(status) => status.code(),
             None => {
                 println!("Timeout reached, killing process");
+                // close stdout and stderr
+                drop(&stdout_handle);
+                drop(&stderr_handle);
+
                 child.kill().unwrap();
 
                 None
             }
         };
 
-        let stdout_str = stdout_handle.join().unwrap();
-        let stderr_str = stderr_handle.join().unwrap();
+        let stdout_str = stdout_handle.join().unwrap_or_default();
+        let stderr_str = stderr_handle.join().unwrap_or_default();
 
         let status = match status {
             Some(0) => MutationStatus::NotKilled,
