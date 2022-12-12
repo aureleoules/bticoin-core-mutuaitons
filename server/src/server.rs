@@ -46,7 +46,7 @@ async fn index() -> impl Responder {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Params {
-    status: Option<String>,
+    file: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -63,22 +63,56 @@ struct MutationListItem {
     end_time: Option<i64>,
 }
 
-#[get("/mutations")]
-async fn list_mutations(req: HttpRequest, ctx: web::Data<Context>) -> impl Responder {
+#[get("/mutations/{status}")]
+async fn list_mutations(
+    path: web::Path<String>,
+    req: HttpRequest,
+    ctx: web::Data<Context>,
+) -> impl Responder {
+    let status = path.into_inner();
     let params = web::Query::<Params>::from_query(req.query_string()).unwrap();
-    let status_filter = params.status.as_ref();
+    let file = params.file.as_ref();
 
-    let default_status = MutationStatus::NotKilled.to_string();
-    let filter = status_filter.unwrap_or(&default_status);
-    let mutations = sqlx::query_as!(MutationListItem, "SELECT id, patch_md5, file, line, patch, branch, pr_number, status, start_time, end_time FROM mutations WHERE status = ?", filter)
-        .fetch_all(&ctx.pool)
+    if file.is_none() {
+        let mutations = sqlx::query_as!(MutationListItem, "SELECT id, patch_md5, file, line, patch, branch, pr_number, status, start_time, end_time FROM mutations WHERE status = ? ORDER BY end_time DESC", status)
+            .fetch_all(&ctx.pool)
+            .await
+            .unwrap();
+
+        HttpResponse::Ok().json(mutations)
+    } else {
+        let file = file.unwrap();
+        let mutations = sqlx::query_as!(MutationListItem, "SELECT id, patch_md5, file, line, patch, branch, pr_number, status, start_time, end_time FROM mutations WHERE status = ? AND file = ? ORDER BY end_time DESC", status, file)
+            .fetch_all(&ctx.pool)
+            .await
+            .unwrap();
+
+        HttpResponse::Ok().json(mutations)
+    }
+}
+
+#[get("/mutations/{status}/files")]
+async fn list_mutations_files(
+    path: web::Path<String>,
+    ctx: web::Data<Context>,
+) -> impl Responder {
+    let status = path.into_inner();
+
+    // Select file FROM mutations WHERE status = ? GROUP BY file
+
+    let files = sqlx::query!(
+        "SELECT file FROM mutations WHERE status = ? GROUP BY file",
+        status
+    ).fetch_all(&ctx.pool)
         .await
         .unwrap();
 
-    HttpResponse::Ok().json(mutations)
+    let files: Vec<String> = files.into_iter().map(|f| f.file).collect();
+
+    HttpResponse::Ok().json(files)
 }
 
-#[get("/mutations/{id}")]
+#[get("/mutation/{id}")]
 async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Responder {
     let id = req.match_info().get("id").unwrap_or("0");
 
@@ -284,6 +318,7 @@ pub async fn run(host: String, port: u16, db: String, tokens: Vec<String>) -> st
             .service(add_mutations)
             .service(submit_mutation_result)
             .service(get_mutation)
+            .service(list_mutations_files)
     })
     .bind(format!("{}:{}", host, port))
     .unwrap()
