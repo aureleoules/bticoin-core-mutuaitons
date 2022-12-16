@@ -166,6 +166,7 @@ pub fn generate_mutations_from_pr(pr_number: i64) -> Vec<Mutation> {
         if file_path.starts_with("test/")
             || file_path.starts_with("src/test")
             || file_path.starts_with("src/qt/test")
+            || file_path.starts_with("src/wallet/test")
             || file_path.starts_with("doc")
         {
             continue;
