@@ -44,10 +44,23 @@ pub async fn execute_mutations(
             todo!("Handle this case")
         };
 
-        let mut cmd_str = format!(
-            "git reset --hard && git checkout {} && git pull origin {}",
-            branch, branch
-        );
+        // format!(
+        //     "git reset --hard && git checkout {} && git pull origin {}",
+        //     branch, branch
+        // );
+        let mut cmd_str = {
+            if let Some(pr) = mutation.pr_number {
+                format!(
+                    "git reset --hard && git fetch origin pull/{}/head:pr-{} && git checkout pr-{} && git pull origin master --rebase",
+                    pr, pr, pr
+                )
+            } else {
+                format!(
+                    "git reset --hard && git checkout {} && git pull origin {}",
+                    branch, branch
+                )
+            }
+        };
 
         // Store patch
         let patch_path = format!("/tmp/{}.patch", mutation.id);
