@@ -69,6 +69,10 @@ mod tests {
                 expected: vec!["break;", "continue;"],
             },
             TestCase {
+                line: "return true;",
+                expected: vec!["break;", "continue;"],
+            },
+            TestCase {
                 line: "break",
                 expected: vec!["return", "continue"],
             },
