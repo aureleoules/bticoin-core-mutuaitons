@@ -11,6 +11,10 @@ impl Default for ExecutionFlowMutator {
         Self {
             patterns: vec![
                 SimpleMutation {
+                    from: Regex::new(r"return\s+(\w+)\s*").unwrap(),
+                    to: vec!["break", "continue"],
+                },
+                SimpleMutation {
                     from: Regex::new(r"return;").unwrap(),
                     to: vec!["break;", "continue;"],
                 },
@@ -57,8 +61,12 @@ mod tests {
 
         let tests = vec![
             TestCase {
-                line: "return",
-                expected: vec!["break", "continue"],
+                line: "return true;",
+                expected: vec!["break;", "continue;"],
+            },
+            TestCase {
+                line: "return;",
+                expected: vec!["break;", "continue;"],
             },
             TestCase {
                 line: "break",
