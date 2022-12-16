@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::mutators::{
     execution_flow::ExecutionFlowMutator,
     operator::{BoolAritmeticMutator, BoolOperatorMutator, IncDecMutator, OperatorMutator},
@@ -6,6 +8,7 @@ use crate::mutators::{
 };
 use common::{Mutation, MutationStatus};
 use lazy_static::lazy_static;
+use unidiff;
 
 lazy_static! {
     static ref MUTATORS: Vec<Box<dyn Mutator + Sync>> = vec![
@@ -18,30 +21,38 @@ lazy_static! {
     ];
 }
 
-pub fn generate_mutations(content: String, lines: &[&str]) -> Vec<(usize, String)> {
+pub fn generate_mutations(lines: &[&str]) -> Vec<(usize, String)> {
     let mut mutations = vec![];
 
     for (i, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("//")
-            || trimmed.starts_with('*')
-            || trimmed.starts_with("assert")
-            || trimmed.starts_with("/*")
-            || trimmed.starts_with("LogPrint")
-        {
-            continue;
-        }
+        mutations.extend(mutate_line(i, line));
+    }
 
-        for m in MUTATORS.iter() {
-            let ctx = MutatorContext {
-                file: content.clone(),
-                line: i,
-                line_content: line.to_string(),
-            };
+    mutations
+}
 
-            let muts = m.mutate(&ctx);
-            mutations.extend(muts.into_iter().map(|m| (i, m)));
-        }
+pub fn mutate_line(number: usize, line: &str) -> Vec<(usize, String)> {
+    let trimmed = line.trim_start();
+    if trimmed.starts_with("//")
+        || trimmed.starts_with('*')
+        || trimmed.starts_with("assert")
+        || trimmed.starts_with("/*")
+        || trimmed.starts_with("LogPrint")
+    {
+        return vec![];
+    }
+
+    let mut mutations = vec![];
+
+    for m in MUTATORS.iter() {
+        let ctx = MutatorContext {
+            file: "".to_string(),
+            line: number,
+            line_content: line.to_string(),
+        };
+
+        let muts = m.mutate(&ctx);
+        mutations.extend(muts.into_iter().map(|m| (number, m)));
     }
 
     mutations
@@ -55,41 +66,133 @@ pub fn generate_mutations_from_files(files: &Vec<String>) -> Vec<Mutation> {
         let content = std::fs::read_to_string(&file).unwrap();
         let lines = content.split('\n').collect::<Vec<&str>>();
 
-        let muts = generate_mutations(content.clone(), &lines);
+        let muts = generate_mutations(&lines);
 
         println!("{} mutations found", muts.len());
-
         println!("Generating patches...");
-        // Generate Git diff patch
+
         for (line, mutation) in muts {
-            let mut lines_copy = lines.clone();
-            lines_copy[line] = mutation.as_str();
-            let joined = lines_copy.join("\n");
-            let patch = diffy::create_patch(&content, &joined);
-
-            let md5 = md5::compute(patch.to_bytes()).to_vec();
-            let md5 = hex::encode(md5);
-            let m = Mutation {
-                id: 0,
-                file: file.clone(),
-                patch_md5: md5,
-                line: line as i64,
-                patch: patch.to_string(),
-                branch: Some("master".to_string()),
-                pr_number: None,
-                status: MutationStatus::Pending.to_string(),
-                start_time: None,
-                end_time: None,
-                stderr: None,
-                stdout: None,
-            };
-
+            let patch = create_patch(&content, line, &mutation);
+            let m = create_mutation(file, &patch, line, Some("master".to_string()), None);
             mutations.push(m);
         }
     }
 
     mutations
 }
+
+fn create_patch(original_content: &str, line: usize, mutation: &str) -> String {
+    let lines = original_content.split('\n').collect::<Vec<&str>>();
+
+    let mut new_lines = vec![];
+    for (i, l) in lines.iter().enumerate() {
+        if i == line {
+            new_lines.push(mutation);
+        } else {
+            new_lines.push(l);
+        }
+    }
+
+    let new_content = new_lines.join("\n");
+    let patch = diffy::create_patch(original_content, &new_content);
+
+    patch.to_string()
+}
+
+fn create_mutation(
+    file: &str,
+    patch: &str,
+    line: usize,
+    branch: Option<String>,
+    pr_number: Option<i64>,
+) -> Mutation {
+    let md5 = md5::compute(patch).to_vec();
+    let md5 = hex::encode(md5);
+
+    Mutation {
+        id: 0,
+        file: file.to_string(),
+        patch_md5: md5,
+        line: line as i64,
+        patch: patch.to_string(),
+        branch,
+        pr_number,
+        status: MutationStatus::Pending.to_string(),
+        start_time: None,
+        end_time: None,
+        stderr: None,
+        stdout: None,
+    }
+}
+
+pub fn generate_mutations_from_pr(pr_number: i64) -> Vec<Mutation> {
+    let cmd = std::process::Command::new("gh")
+        .arg("pr")
+        .arg("checkout")
+        .arg(pr_number.to_string())
+        .output()
+        .expect("failed to execute process");
+
+    let output = String::from_utf8_lossy(&cmd.stdout);
+    let output = output.trim();
+    println!("Output: {}", output);
+
+    std::process::Command::new("git")
+        .arg("pull")
+        .arg("origin")
+        .arg("master")
+        .arg("--rebase")
+        .output()
+        .expect("failed to execute process");
+
+    let cmd = std::process::Command::new("git")
+        .arg("diff")
+        .arg("master")
+        .output()
+        .expect("failed to execute process");
+
+    let output = String::from_utf8_lossy(&cmd.stdout);
+    let output = output.trim();
+
+    let patchset = unidiff::PatchSet::from_str(output).unwrap();
+
+    let mut mutations = vec![];
+    for patch in patchset {
+        let file_path = patch.target_file.clone();
+        if file_path.ends_with(".py") {
+            continue;
+        }
+        if file_path.starts_with("test/")
+            || file_path.starts_with("src/test")
+            || file_path.starts_with("doc")
+        {
+            continue;
+        }
+
+        // remove a/ and b/ from the path
+        let file_path = file_path[2..].to_string();
+        println!("File path: {}", file_path);
+        let file_content = std::fs::read_to_string(&file_path).unwrap();
+        for hunk in patch {
+            for line in hunk.lines() {
+                if line.is_added() {
+                    let muts = mutate_line(line.target_line_no.unwrap(), &line.value);
+                    println!("Mutating line {}", line.value);
+                    for (line_no, mutation) in muts {
+                        println!("Mutation: {}", mutation);
+                        let patch = create_patch(&file_content, line_no, &mutation);
+                        let m = create_mutation(&file_path, &patch, line_no, None, Some(pr_number));
+
+                        mutations.push(m);
+                    }
+                }
+            }
+        }
+    }
+
+    mutations
+}
+
 // #[cfg(test)]
 // mod test {
 //     use super::generate_mutations;

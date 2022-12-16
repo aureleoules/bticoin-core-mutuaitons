@@ -17,12 +17,19 @@ COPY mutator ./mutator
 RUN cd mutator && cargo build --release
 
 FROM debian:bullseye AS runtime
-RUN apt update && apt install -y git
+RUN apt update && apt install -y curl git
+RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+&& apt update \
+&& apt install gh -y
 WORKDIR app
 COPY --from=chef /tmp/bitcoin /tmp/bitcoin
 COPY --from=builder /app/mutator/target/release/mutator /usr/local/bin/bcm-mutator
 
 WORKDIR /tmp/bitcoin
+RUN git config --global user.email "mutator@aureleoules.com"
+RUN git config --global user.name "bcm-mutator"
 RUN git pull origin master
 
 ENTRYPOINT ["bcm-mutator"]

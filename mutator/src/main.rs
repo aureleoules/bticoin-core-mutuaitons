@@ -11,6 +11,8 @@ pub mod mutators;
 struct Args {
     #[clap(short, long, help = "Files to mutate")]
     files: Vec<String>,
+    #[clap(long, help = "PR Number")]
+    pr: Option<i64>,
     #[clap(short, long, help = "Server to send mutations")]
     server: String,
     #[clap(long, help = "Token to use for authentication")]
@@ -25,12 +27,24 @@ async fn main() {
 
     let files = args.files;
 
-    if files.is_empty() {
-        println!("No files to mutate, please specify some files with --files.");
-        return;
-    }
+    let mutations = {
+        if let Some(pr) = args.pr {
+            println!("Generating mutations for PR #{}", pr);
+            let muts = mutate::generate_mutations_from_pr(pr);
+            println!("{} mutations found", muts.len());
+            muts
+        } else {
+            if files.is_empty() {
+                println!("No files to mutate, please specify some files with --files.");
+                return;
+            }
 
-    let mutations = mutate::generate_mutations_from_files(&files);
+            println!("Generating mutations for files");
+            let muts = mutate::generate_mutations_from_files(&files);
+            println!("{} mutations found", muts.len());
+            muts
+        }
+    };
 
     if args.debug {
         for m in &mutations {
