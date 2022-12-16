@@ -11,8 +11,8 @@ impl Default for ExecutionFlowMutator {
         Self {
             patterns: vec![
                 SimpleMutation {
-                    from: Regex::new(r"return\s+(\w+)\s*").unwrap(),
-                    to: vec!["break", "continue"],
+                    from: Regex::new(r"return\s+(.*)\s*").unwrap(),
+                    to: vec!["break;", "continue;"],
                 },
                 SimpleMutation {
                     from: Regex::new(r"return;").unwrap(),
@@ -61,7 +61,7 @@ mod tests {
 
         let tests = vec![
             TestCase {
-                line: "return true;",
+                line: "return wallet.GetLastBlockHash();",
                 expected: vec!["break;", "continue;"],
             },
             TestCase {
