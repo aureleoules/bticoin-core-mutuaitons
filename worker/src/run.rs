@@ -38,12 +38,6 @@ pub async fn execute_mutations(
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
-        let branch = if mutation.branch.is_some() {
-            mutation.branch.unwrap()
-        } else {
-            todo!("Handle this case")
-        };
-
         // format!(
         //     "git reset --hard && git checkout {} && git pull origin {}",
         //     branch, branch
@@ -51,12 +45,13 @@ pub async fn execute_mutations(
         let mut cmd_str = {
             if let Some(pr) = mutation.pr_number {
                 format!(
-                    "git reset --hard && git fetch origin pull/{}/head:pr-{} && git checkout pr-{} && git pull origin master --rebase",
-                    pr, pr, pr
+                    "git reset --hard && git checkout master && git branch | grep -v master | xargs git branch -D; gh pr checkout {} && git pull origin master --rebase",
+                    pr,
                 )
             } else {
+                let branch = mutation.branch.as_ref().unwrap();
                 format!(
-                    "git reset --hard && git checkout {} && git pull origin {}",
+                    "git reset --hard && git checkout master && git checkout {} && git pull origin {}",
                     branch, branch
                 )
             }
