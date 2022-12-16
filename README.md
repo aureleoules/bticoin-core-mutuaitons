@@ -14,23 +14,10 @@ services:
   bcm_server:
     image: aureleoules/bcm-server
     container_name: bcm-server
-    networks:
-      - bcm
     restart: always
-    command: --redis redis --token aureleoules:token --token user2:token
-    
-  redis:
-    image: redislabs/rejson
-    container_name: bcm_redis
-    networks:
-      - bcm
-    restart: always
-    command: redis-server --save 60 1 --loglevel warning --loadmodule '/usr/lib/redis/modules/rejson.so'
+    command: --db /data.db --token user:token
     volumes:
-      - ./db:/data
-
-networks:
-  bcm:
+      - ./data.db:/data.db
 ```
 
 ### Add mutations
