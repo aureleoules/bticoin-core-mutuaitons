@@ -159,6 +159,7 @@ pub fn generate_mutations_from_pr(pr_number: i64) -> Vec<Mutation> {
     let mut mutations = vec![];
     for patch in patchset {
         let file_path = patch.target_file.clone();
+        let file_path = file_path[2..].to_string();
         if file_path.ends_with(".py") {
             continue;
         }
@@ -170,7 +171,6 @@ pub fn generate_mutations_from_pr(pr_number: i64) -> Vec<Mutation> {
         }
 
         // remove a/ and b/ from the path
-        let file_path = file_path[2..].to_string();
         println!("File path: {}", file_path);
         let file_content = std::fs::read_to_string(&file_path).unwrap();
         for hunk in patch {
