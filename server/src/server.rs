@@ -112,6 +112,23 @@ async fn list_mutations_files(
     HttpResponse::Ok().json(files)
 }
 
+#[get("/mutations/{status}/count")]
+async fn count_mutations(
+    path: web::Path<String>,
+    ctx: web::Data<Context>,
+) -> impl Responder {
+    let status = path.into_inner();
+
+    let count = sqlx::query!(
+        "SELECT COUNT(*) as count FROM mutations WHERE status = ?",
+        status
+    ).fetch_one(&ctx.pool)
+        .await
+        .unwrap();
+
+    HttpResponse::Ok().json(count.count)
+}
+
 #[get("/mutation/{id}")]
 async fn get_mutation(ctx: web::Data<Context>, req: HttpRequest) -> impl Responder {
     let id = req.match_info().get("id").unwrap_or("0");
@@ -319,6 +336,7 @@ pub async fn run(host: String, port: u16, db: String, tokens: Vec<String>) -> st
             .service(submit_mutation_result)
             .service(get_mutation)
             .service(list_mutations_files)
+            .service(count_mutations)
     })
     .bind(format!("{}:{}", host, port))
     .unwrap()
