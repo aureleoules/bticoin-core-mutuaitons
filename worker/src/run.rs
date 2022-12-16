@@ -45,7 +45,7 @@ pub async fn execute_mutations(
         let mut cmd_str = {
             if let Some(pr) = mutation.pr_number {
                 format!(
-                    "git reset --hard && git checkout master && git branch | grep -v master | xargs git branch -D; gh pr checkout {} && git pull origin master --rebase",
+                    "git reset --hard && git checkout master && git branch | grep -v master | xargs git branch -D; gh pr checkout {} && git rebase --abort; git pull origin master --rebase",
                     pr,
                 )
             } else {
