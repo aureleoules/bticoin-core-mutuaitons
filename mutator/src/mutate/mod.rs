@@ -180,7 +180,7 @@ pub fn generate_mutations_from_pr(pr_number: i64) -> Vec<Mutation> {
                     println!("Mutating line {}", line.value);
                     for (line_no, mutation) in muts {
                         println!("Mutation: {}", mutation);
-                        let patch = create_patch(&file_content, line_no, &mutation);
+                        let patch = create_patch(&file_content, line_no-1, &mutation);
                         let m = create_mutation(&file_path, &patch, line_no, None, Some(pr_number));
 
                         mutations.push(m);
