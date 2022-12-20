@@ -26,6 +26,10 @@ impl Default for ExecutionFlowMutator {
                     from: Regex::new(r"continue").unwrap(),
                     to: vec!["return", "break"],
                 },
+                SimpleMutation {
+                    from: Regex::new(r"at(\(.\))").unwrap(),
+                    to: vec!["at(0)"]
+                }
             ],
         }
     }
@@ -79,6 +83,14 @@ mod tests {
             TestCase {
                 line: "continue",
                 expected: vec!["return", "break"],
+            },
+            TestCase {
+                line: "tx.vin.at(i).scriptSig",
+                expected: vec!["tx.vin.at(0).scriptSig"]
+            },
+            TestCase {
+                line: "txdata.m_spent_outputs.at(i);",
+                expected: vec!["txdata.m_spent_outputs.at(0);"]
             },
         ];
 
