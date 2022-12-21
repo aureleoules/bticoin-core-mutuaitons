@@ -29,6 +29,10 @@ impl Default for ExecutionFlowMutator {
                 SimpleMutation {
                     from: Regex::new(r"at(\(.\))").unwrap(),
                     to: vec!["at(0)"]
+                },
+                SimpleMutation {
+                    from: Regex::new(r"JSONRPCError(\(.*\))").unwrap(),
+                    to: vec!["JSONRPCError(-123123, \"abc123\")"]
                 }
             ],
         }
@@ -92,6 +96,10 @@ mod tests {
                 line: "txdata.m_spent_outputs.at(i);",
                 expected: vec!["txdata.m_spent_outputs.at(0);"]
             },
+            TestCase {
+                line: "throw JSONRPCError(RPC_WALLET_ERROR, \"Error: Private keys are disabled for this wallet\");",
+                expected: vec!["throw JSONRPCError(-123123, \"abc123\");"]
+            }
         ];
 
         for test in tests {
