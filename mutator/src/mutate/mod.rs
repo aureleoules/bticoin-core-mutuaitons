@@ -4,6 +4,7 @@ use crate::mutators::{
     execution_flow::ExecutionFlowMutator,
     operator::{BoolAritmeticMutator, BoolOperatorMutator, IncDecMutator, OperatorMutator},
     std_algorithm::StdAlgorithmMutator,
+    number::NumberMutator,
     Mutator, MutatorContext,
 };
 use common::{Mutation, MutationStatus};
@@ -16,6 +17,7 @@ lazy_static! {
         Box::new(BoolOperatorMutator::default()),
         Box::new(ExecutionFlowMutator::default()),
         Box::new(StdAlgorithmMutator::default()),
+        Box::new(NumberMutator::default()),
         Box::new(BoolAritmeticMutator::default()),
         Box::new(IncDecMutator::default()),
     ];
